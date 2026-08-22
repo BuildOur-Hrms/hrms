@@ -37,6 +37,11 @@ on:
           - migrate-and-seed
           - seed
           - create-app-role
+      seed_demo:
+        description: Also insert the demo organisation (never for production)
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   run:
@@ -60,7 +65,10 @@ jobs:
       EMAIL_PROVIDER: console
       QUEUE_DRIVER: inline
       LOG_LEVEL: info
-      SEED_DEMO: "true"
+      # Off unless explicitly asked for. This job's usual target is production,
+      # and the demo organisation is sample data that nobody wants to discover
+      # sitting next to their real departments.
+      SEED_DEMO: ${{ inputs.seed_demo }}
 
     steps:
       - uses: actions/checkout@v4
