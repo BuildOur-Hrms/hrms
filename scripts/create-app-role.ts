@@ -116,12 +116,19 @@ async function main() {
       : null;
     const appUsername = isPooler && projectRef ? `${ROLE}.${projectRef}` : ROLE;
 
+    /**
+     * When the password came from a secret, print a placeholder rather than
+     * the value — and not merely for tidiness. A CI log redacts registered
+     * secrets, so a *generated* password prints as `***` and the whole
+     * connection string is unusable to the person who has to paste it. The
+     * operator already knows a password they supplied.
+     */
     const build = (port: string) => {
       const url = new URL(ownerUrl);
       url.username = appUsername;
-      url.password = password;
+      url.password = supplied ? "APP-DB-PASSWORD" : password;
       url.port = port;
-      return url.toString();
+      return url.toString().replace("APP-DB-PASSWORD", "<APP_DB_PASSWORD>");
     };
 
     console.log(`\nApplication role: ${appUsername}\n`);
