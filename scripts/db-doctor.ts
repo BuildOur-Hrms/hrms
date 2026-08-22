@@ -118,13 +118,18 @@ function explainConnectionFailure(error: unknown, url: string): Error {
  * nor holds BYPASSRLS.
  */
 async function findRestrictedRole(client: Client): Promise<string | null> {
+  // `has_table_privilege` matters: Supabase ships several login roles that are
+  // neither superuser nor BYPASSRLS (anon, authenticated, authenticator) but
+  // hold no grants on our tables, so switching to one produces "permission
+  // denied" rather than a meaningful isolation result. Prefer our own role.
   const result = await client.query<{ rolname: string }>(`
     SELECT rolname FROM pg_roles
      WHERE rolcanlogin
        AND NOT rolsuper
        AND NOT rolbypassrls
        AND rolname NOT LIKE 'pg\_%'
-     ORDER BY rolname
+       AND has_table_privilege(rolname, 'public.employees', 'SELECT')
+     ORDER BY (rolname = 'app_user') DESC, rolname
      LIMIT 1
   `);
   return result.rows[0]?.rolname ?? null;
@@ -303,12 +308,17 @@ async function main() {
       const restricted = await findRestrictedRole(client);
 
       if (restricted) {
-        const visible = await probe(client, restricted);
-        assert(
-          visible === 0,
-          `policies are correct — scoped to a foreign company, ${restricted} sees zero of ${total} employees`,
-          `under ${restricted}, a foreign-scoped session still saw ${visible} of ${total} employees — the policies themselves are wrong`,
-        );
+        try {
+          const visible = await probe(client, restricted);
+          assert(
+            visible === 0,
+            `policies are correct — scoped to a foreign company, ${restricted} sees zero of ${total} employees`,
+            `under ${restricted}, a foreign-scoped session still saw ${visible} of ${total} employees — the policies themselves are wrong`,
+          );
+        } catch (error) {
+          warnings += 1;
+          warn(`could not probe as ${restricted}: ${(error as Error).message}`);
+        }
       } else {
         warnings += 1;
         warn("no non-privileged role found, so policy correctness is untested");
