@@ -1,0 +1,11 @@
+# Normalise line endings so a Windows and a Linux checkout produce identical
+# blobs. Without this, every file touched on Windows shows as fully rewritten.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+
+package-lock.json linguist-generated=true
+src/generated/** linguist-generated=true

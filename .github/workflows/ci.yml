@@ -1,0 +1,129 @@
+# CI pipeline (docs/10-roadmap-testing-deployment.md §4).
+#
+# lint → typecheck → unit → integration (real Postgres, RLS active) → build.
+# Nothing merges without the tenant-isolation and permission-matrix suites
+# passing, because a regression there is a data breach, not a bug.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+
+jobs:
+  quality:
+    name: Lint, typecheck, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hrms
+          POSTGRES_PASSWORD: hrms
+          POSTGRES_DB: hrms_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hrms"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://hrms:hrms@localhost:5432/hrms_test
+      DIRECT_DATABASE_URL: postgresql://hrms:hrms@localhost:5432/hrms_test
+      REDIS_URL: redis://localhost:6379
+      AUTH_SECRET: ci-secret-value-long-enough-for-validation
+      APP_URL: http://localhost:3000
+      EMAIL_PROVIDER: console
+      LOG_LEVEL: silent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      - run: npx prisma generate
+
+      # `migrate deploy` rather than `db push`: this is also the rehearsal
+      # that the hand-written RLS and constraint migrations still apply.
+      - run: npx prisma migrate deploy
+
+      - run: npx vitest run --dir tests/integration
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://build:build@localhost:5432/build
+      AUTH_SECRET: build-secret-value-long-enough-for-validation
+      APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+  security:
+    name: Secret and dependency scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      # Advisories in the build toolchain should not block a merge; anything
+      # that ships to production should.
+      - run: npm audit --omit=dev --audit-level=high
