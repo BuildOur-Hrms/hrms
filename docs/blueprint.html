@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>HRMS — Technical Blueprint</title>
+<style>
+@page { size: A4; margin: 16mm 14mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5pt; color: #1a202c; line-height: 1.45; margin: 0; }
+@media screen { body { max-width: 900px; margin: 0 auto; padding: 24px; } }
+.cover { display: flex; flex-direction: column; justify-content: center; min-height: 240mm; page-break-after: always; }
+.cover h1 { font-size: 30pt; color: #1e3a8a; border: none; margin: 0 0 4mm; }
+.cover .sub { font-size: 13pt; color: #475569; margin-bottom: 14mm; }
+.meta { color: #64748b; font-size: 9pt; margin-top: 12mm; }
+section.doc { page-break-before: always; }
+.doctag { font-size: 8pt; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2mm; }
+h1 { font-size: 17pt; color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 2mm; margin: 0 0 4mm; }
+h2 { font-size: 13pt; color: #1e40af; margin: 6mm 0 2.5mm; border-bottom: 1px solid #cbd5e1; padding-bottom: 1mm; }
+h3 { font-size: 11pt; color: #334155; margin: 4mm 0 2mm; }
+h4 { font-size: 10pt; color: #334155; margin: 3mm 0 1.5mm; }
+p { margin: 0 0 2.2mm; }
+ul, ol { margin: 0 0 2.5mm; padding-left: 5.5mm; }
+li { margin-bottom: 0.8mm; }
+blockquote { margin: 0 0 3mm; padding: 2mm 4mm; background: #f1f5f9; border-left: 3px solid #1e40af; color: #475569; font-size: 9pt; }
+blockquote p { margin: 0; }
+code { font-family: Consolas, 'Courier New', monospace; font-size: 8.5pt; background: #f1f5f9; padding: 0 1.2mm; border-radius: 2px; }
+pre { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 3px; padding: 2.5mm 3mm; white-space: pre-wrap; word-wrap: break-word; margin: 0 0 3mm; page-break-inside: avoid; }
+pre code { background: none; padding: 0; font-size: 7.8pt; line-height: 1.35; }
+table { border-collapse: collapse; width: 100%; margin: 0 0 3.5mm; font-size: 8.3pt; }
+th { background: #1e3a8a; color: #fff; text-align: left; padding: 1.4mm 2mm; font-weight: 600; }
+td { border: 1px solid #cbd5e1; padding: 1.2mm 2mm; vertical-align: top; }
+tr { page-break-inside: avoid; }
+tbody tr:nth-child(even) { background: #f8fafc; }
+hr { border: none; border-top: 1px solid #e2e8f0; margin: 4mm 0; }
+strong { color: #0f172a; }
+.toc table { font-size: 9.5pt; }
+.tocnum { color: #1e3a8a; font-weight: 700; width: 10mm; }
+.tocfile { color: #64748b; font-family: Consolas, monospace; font-size: 8pt; }
+#loading { color: #64748b; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="cover">
+  <h1>HRMS — Technical Blueprint</h1>
+  <div class="sub">Production-ready plan for a multi-tenant HR Management System<br>
+  Employees · Attendance · Leave · Payroll · Documents · Recruitment · Performance · Training · Expenses · Reports</div>
+  <div class="toc">
+  <table>
+    <tr><th style="width:10mm">#</th><th>Document</th><th>File</th></tr>
+    <tr><td class="tocnum">—</td><td>Index &amp; Quick Reference</td><td class="tocfile">README.md</td></tr>
+    <tr><td class="tocnum">00</td><td>Product Overview, Requirements &amp; Role Model</td><td class="tocfile">00-overview-and-roles.md</td></tr>
+    <tr><td class="tocnum">01</td><td>Core Modules (1–8)</td><td class="tocfile">01-modules-core.md</td></tr>
+    <tr><td class="tocnum">02</td><td>Talent &amp; Money Modules (9–16)</td><td class="tocfile">02-modules-talent.md</td></tr>
+    <tr><td class="tocnum">03</td><td>Platform Modules (17–23) &amp; Reports Catalog</td><td class="tocfile">03-modules-platform-and-reports.md</td></tr>
+    <tr><td class="tocnum">04</td><td>Database Schema &amp; Multi-Tenant Model</td><td class="tocfile">04-database.md</td></tr>
+    <tr><td class="tocnum">05</td><td>Application Architecture</td><td class="tocfile">05-architecture.md</td></tr>
+    <tr><td class="tocnum">06</td><td>UI/UX Screen Specifications</td><td class="tocfile">06-ui-ux.md</td></tr>
+    <tr><td class="tocnum">07</td><td>Workflows, Notifications &amp; Automation</td><td class="tocfile">07-workflows-and-automation.md</td></tr>
+    <tr><td class="tocnum">08</td><td>API Specification</td><td class="tocfile">08-api.md</td></tr>
+    <tr><td class="tocnum">09</td><td>Security, Privacy &amp; Data Protection</td><td class="tocfile">09-security.md</td></tr>
+    <tr><td class="tocnum">10</td><td>Roadmap, Testing, Deployment &amp; Build Order</td><td class="tocfile">10-roadmap-testing-deployment.md</td></tr>
+  </table>
+  </div>
+  <div class="meta">Generated 22 August 2026 · 12 documents · Single source of truth for implementation</div>
+</div>
+
+<div id="content"><p id="loading">Rendering…</p></div>
+
+<script>
+// Loads sibling .md files via XHR (works from disk with --allow-file-access-from-files,
+// and over http). Rendered with marked.js.
+const FILES = [
+  "README.md",
+  "00-overview-and-roles.md",
+  "01-modules-core.md",
+  "02-modules-talent.md",
+  "03-modules-platform-and-reports.md",
+  "04-database.md",
+  "05-architecture.md",
+  "06-ui-ux.md",
+  "07-workflows-and-automation.md",
+  "08-api.md",
+  "09-security.md",
+  "10-roadmap-testing-deployment.md",
+];
+
+function loadFile(name) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", name, true);
+    xhr.onload = () => (xhr.status === 200 || xhr.status === 0) ? resolve(xhr.responseText) : reject(new Error(name));
+    xhr.onerror = () => reject(new Error(name));
+    xhr.send();
+  });
+}
+
+function stripMdLinks(md) {
+  // cross-doc links are meaningless inside one PDF -> bold text
+  return md.replace(/\[([^\]]+)\]\((?:\d{2}-[a-z\-]+|README)\.md[^)]*\)/g, "**$1**");
+}
+
+async function render() {
+  const content = document.getElementById("content");
+  const parts = [];
+  for (const f of FILES) {
+    const md = await loadFile(f);
+    parts.push('<section class="doc"><div class="doctag">' + f + "</div>" + marked.parse(stripMdLinks(md)) + "</section>");
+  }
+  content.innerHTML = parts.join("");
+  document.title = "HRMS — Technical Blueprint";
+  window.__RENDER_DONE__ = true;
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"
+        onload="render().catch(e => document.getElementById('loading').textContent = 'FAILED: ' + e.message)"></script>
+</body>
+</html>

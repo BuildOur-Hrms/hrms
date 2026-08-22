@@ -1,36 +1,198 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HRMS
 
-## Getting Started
+Employee lifecycle management: people, org structure, time, leave, payroll.
 
-First, run the development server:
+The blueprint in [`docs/`](docs/README.md) is the specification. This README is
+only how to run what is built. Where the two disagree, the blueprint wins —
+except for the deviations recorded at the bottom of this file.
+
+**Current state:** Phase 1, milestones M0 (foundation) and M1 (org & employees).
+Attendance, leave and holidays are M2–M3 and not built yet.
+
+---
+
+## Stack
+
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 15 (App Router, TypeScript strict) |
+| UI | Tailwind v4 + shadcn/ui (Base UI), lucide-react |
+| Data | TanStack Query + Table, react-hook-form + zod |
+| API | REST route handlers under `/api/v1` |
+| Database | PostgreSQL 16 + Prisma 7 (`@prisma/adapter-pg`) |
+| Auth | Auth.js v5 JWE session cookie, argon2id passwords |
+| AuthZ | Permission RBAC + tenant-scoped Prisma extension + Postgres RLS |
+| Jobs | BullMQ + Redis (inline fallback driver in development) |
+| Mail | Console / SMTP / Resend behind one interface |
+
+---
+
+## Getting started
+
+### 1. Configure the environment
+
+```bash
+cp .env.example .env
+```
+
+Fill in at minimum `DATABASE_URL`, `DIRECT_DATABASE_URL` and `AUTH_SECRET`.
+Generate a secret with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+On a pooled provider (Neon, Supabase) `DATABASE_URL` is the pooled endpoint and
+`DIRECT_DATABASE_URL` is the direct one. Migrations need the direct connection;
+the app uses the pooled one.
+
+### 2. Or run everything locally with Docker
+
+```bash
+docker compose up -d
+```
+
+Brings up Postgres, Redis, MinIO and Mailpit. Then point `DATABASE_URL` and
+`DIRECT_DATABASE_URL` at `postgresql://hrms:hrms@localhost:5432/hrms`, set
+`REDIS_URL=redis://localhost:6379`, and `EMAIL_PROVIDER=smtp` with
+`SMTP_URL=smtp://localhost:1025`. Mailpit's inbox is at http://localhost:8025.
+
+### 3. Migrate and seed
+
+```bash
+npm run db:deploy && npm run db:seed
+```
+
+The seed is idempotent. It writes the permission catalog, the pilot company,
+the four system roles with their grants, the settings defaults, and two
+**invited** administrator accounts — then prints their invite links. No
+password is ever seeded.
+
+### 4. Run
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000, follow an invite link from the seed output, set a
+password, and sign in.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Commands
 
-## Learn More
+| Command | What it does |
+|---|---|
+| `npm run dev` | Development server |
+| `npm run build` | Generate the Prisma client and build for production |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
+| `npm run format` | Prettier write |
+| `npm test` | Vitest unit suite |
+| `npm run db:migrate` | Create and apply a migration (development) |
+| `npm run db:deploy` | Apply pending migrations (CI, staging, production) |
+| `npm run db:seed` | Idempotent seed |
+| `npm run db:studio` | Prisma Studio |
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## How the code is organised
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+prisma/           schema, migrations (incl. hand-written RLS + constraints), seed
+src/
+  app/
+    (auth)/       login, forgot-password, reset-password
+    (app)/        authenticated shell — dashboard, me, team, hr, admin
+    api/v1/       REST route handlers, one folder per resource
+  modules/        DOMAIN LOGIC — auth, org, employees, rbac, settings, audit
+  lib/            db, api pipeline, permissions, session, events, queue, mail
+  components/     ui/ (shadcn), shared/, app-shell/
+tests/            unit (integration and e2e land with M5)
+```
 
-## Deploy on Vercel
+**The rule that keeps this maintainable:** a module's tables are touched only by
+that module's service functions. Cross-module needs call the other module's
+exported service, never its tables. Route handlers are thin adapters — every one
+of them is `withApi({ permission, schema }, ({ ctx, body }) => service(...))`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Request pipeline
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Every `/api/v1` request goes through `withApi` in this order:
+
+1. request id + logger
+2. CSRF origin check on mutating methods
+3. rate limit
+4. authenticate — decode the session cookie, load the user, verify `session_version`
+5. tenant resolve — open a transaction, set the RLS session variables
+6. `requirePermission` — the permission the route declared
+7. zod validation of body, query and path params
+8. the service call
+
+### Tenant isolation
+
+Two independent layers, either of which is sufficient:
+
+- **App layer** — a Prisma client extension injects `company_id` into every
+  model operation, so business code cannot forget it.
+- **Database layer** — RLS policies re-check the same thing against
+  `app.company_id`, a transaction-local session variable.
+
+Anything needing to escape both (login, which has no tenant context yet) goes
+through the explicit `withPlatform()` helper.
+
+### Permissions
+
+`module.action` strings, defined once in `src/lib/permissions.ts` and seeded into
+the database. The role matrix lives there as data, the seed writes it, and
+`tests/unit/permissions.test.ts` asserts it — so drift between the docs and the
+running system fails CI. Feature code never branches on a role name.
+
+---
+
+## Deviations from the blueprint
+
+Each of these was a forced choice, not a preference:
+
+1. **Auth.js v5 JWT primitives instead of the full NextAuth handler.**
+   `docs/08-api.md` specifies `POST /api/v1/auth/login` with a defined error
+   envelope, including distinct 422s for locked and disabled accounts. NextAuth's
+   Credentials provider deliberately masks those distinctions. We use
+   `@auth/core/jwt` for the session token and cookie — the same format, so SSO
+   providers drop in later — and implement the documented endpoints ourselves.
+
+2. **`FORCE ROW LEVEL SECURITY` instead of a separate `app_user` role.**
+   `docs/09-security.md` §9 calls for a non-owner database role without
+   `BYPASSRLS`. Managed Postgres hands you a single owner role, and an owner is
+   exempt from RLS unless the table forces it. Every tenant table is `FORCE`d,
+   which subjects the owner to the same policies. When a separate role is
+   available, grant it — `FORCE` stays correct either way.
+
+3. **`audit_logs` immutability by trigger instead of by grant.**
+   Same reason: with one owner role, a grant can be re-granted. A trigger
+   rejects `UPDATE` and `DELETE` outright, with a transaction-local escape for
+   the Phase 2 retention job.
+
+4. **Prisma 7 rather than the Prisma 5/6 the blueprint assumed.**
+   Driver-adapter based (`@prisma/adapter-pg`). Client extensions, interactive
+   transactions and `$executeRawUnsafe` all work as the blueprint's tenancy
+   design requires.
+
+5. **`employees.candidate_id` is not in the schema yet.**
+   It references `candidates`, a Phase 2 recruitment table. It lands with that
+   migration set rather than as a dangling column.
+
+6. **The queue has an inline fallback driver.**
+   Without `REDIS_URL`, jobs run in-process after the response — no retries.
+   It refuses to start in production. This exists so the whole flow can be
+   exercised with only Postgres running.
+
+---
+
+## What is not built yet
+
+Phase 1 milestones M2 onward: shifts, attendance (punches, nightly calculation,
+corrections, month locks), leave (types, policies, balances, accruals,
+requests), holidays, notifications, dashboards beyond headcount, and the
+integration / permission-matrix / e2e test suites. Build order is
+`docs/10-roadmap-testing-deployment.md` §6.
