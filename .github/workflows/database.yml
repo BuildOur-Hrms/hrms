@@ -48,7 +48,9 @@ jobs:
       cancel-in-progress: false
 
     env:
-      NODE_ENV: production
+      # Deliberately NOT NODE_ENV=production: `npm ci` honours it by skipping
+      # devDependencies, and this job runs entirely on them — tsx, prisma, the
+      # scripts. It is a maintenance job, not a deployment.
       # Migrations and the seed both connect over the session pooler.
       DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
       DIRECT_DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -68,7 +70,7 @@ jobs:
           node-version: "24"
           cache: npm
 
-      - run: npm ci
+      - run: npm ci --include=dev
       - run: npx prisma generate
 
       - name: Guard against a missing secret
