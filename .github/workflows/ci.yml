@@ -85,7 +85,10 @@ jobs:
       # that the hand-written RLS and constraint migrations still apply.
       - run: npx prisma migrate deploy
 
-      - run: npx vitest run --dir tests/integration
+      # `--passWithNoTests` because the integration suite lands with M5; the
+      # job still proves that every migration, including the hand-written RLS
+      # and constraint SQL, applies cleanly to an empty database.
+      - run: npx vitest run --dir tests/integration --passWithNoTests
 
   build:
     name: Production build
@@ -113,10 +116,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Run the binary rather than the action: gitleaks-action requires a
+      # paid licence for organisation repositories.
       - name: Scan for committed secrets
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz" | tar -xz -C /tmp gitleaks
+          /tmp/gitleaks dir . --redact --no-banner
 
       - uses: actions/setup-node@v4
         with:

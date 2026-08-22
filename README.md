@@ -13,17 +13,17 @@ Attendance, leave and holidays are M2–M3 and not built yet.
 
 ## Stack
 
-| Layer | Choice |
-|---|---|
-| Framework | Next.js 15 (App Router, TypeScript strict) |
-| UI | Tailwind v4 + shadcn/ui (Base UI), lucide-react |
-| Data | TanStack Query + Table, react-hook-form + zod |
-| API | REST route handlers under `/api/v1` |
-| Database | PostgreSQL 16 + Prisma 7 (`@prisma/adapter-pg`) |
-| Auth | Auth.js v5 JWE session cookie, argon2id passwords |
-| AuthZ | Permission RBAC + tenant-scoped Prisma extension + Postgres RLS |
-| Jobs | BullMQ + Redis (inline fallback driver in development) |
-| Mail | Console / SMTP / Resend behind one interface |
+| Layer     | Choice                                                          |
+| --------- | --------------------------------------------------------------- |
+| Framework | Next.js 15 (App Router, TypeScript strict)                      |
+| UI        | Tailwind v4 + shadcn/ui (Base UI), lucide-react                 |
+| Data      | TanStack Query + Table, react-hook-form + zod                   |
+| API       | REST route handlers under `/api/v1`                             |
+| Database  | PostgreSQL 16 + Prisma 7 (`@prisma/adapter-pg`)                 |
+| Auth      | Auth.js v5 JWE session cookie, argon2id passwords               |
+| AuthZ     | Permission RBAC + tenant-scoped Prisma extension + Postgres RLS |
+| Jobs      | BullMQ + Redis (inline fallback driver in development)          |
+| Mail      | Console / SMTP / Resend behind one interface                    |
 
 ---
 
@@ -81,18 +81,18 @@ password, and sign in.
 
 ## Commands
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Development server |
-| `npm run build` | Generate the Prisma client and build for production |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier write |
-| `npm test` | Vitest unit suite |
-| `npm run db:migrate` | Create and apply a migration (development) |
-| `npm run db:deploy` | Apply pending migrations (CI, staging, production) |
-| `npm run db:seed` | Idempotent seed |
-| `npm run db:studio` | Prisma Studio |
+| Command              | What it does                                        |
+| -------------------- | --------------------------------------------------- |
+| `npm run dev`        | Development server                                  |
+| `npm run build`      | Generate the Prisma client and build for production |
+| `npm run typecheck`  | `tsc --noEmit`                                      |
+| `npm run lint`       | ESLint                                              |
+| `npm run format`     | Prettier write                                      |
+| `npm test`           | Vitest unit suite                                   |
+| `npm run db:migrate` | Create and apply a migration (development)          |
+| `npm run db:deploy`  | Apply pending migrations (CI, staging, production)  |
+| `npm run db:seed`    | Idempotent seed                                     |
+| `npm run db:studio`  | Prisma Studio                                       |
 
 ---
 
