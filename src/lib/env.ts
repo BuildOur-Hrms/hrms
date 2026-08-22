@@ -70,15 +70,64 @@ function resolveAppUrl(): string | undefined {
   return host ? `https://${host}` : undefined;
 }
 
-function load() {
-  const parsed = schema.safeParse({ ...process.env, APP_URL: resolveAppUrl() });
-  if (!parsed.success) {
-    const issues = parsed.error.issues
-      .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
-      .join("\n");
-    throw new Error(`Invalid environment configuration:\n${issues}`);
+/**
+ * `next build` imports every route module to collect its metadata. None of
+ * that opens a database connection or sends mail, so a missing runtime secret
+ * must not fail the build — otherwise every preview deployment and every fork
+ * needs the production credentials just to compile. The strict check below
+ * still runs on the first real request, which is where it belongs.
+ */
+const isBuildPhase = process.env["NEXT_PHASE"] === "phase-production-build";
+
+/** Stand-ins for the two secrets with no default, used only during the build. */
+const BUILD_PLACEHOLDERS = {
+  DATABASE_URL: "postgresql://placeholder:placeholder@127.0.0.1:5432/placeholder",
+  AUTH_SECRET: "build-phase-placeholder-value-not-a-real-secret",
+} as const;
+
+/**
+ * A variable declared in a dashboard but left blank arrives as `""`, which is
+ * not the same as unset: zod runs it through the enum and email checks and
+ * rejects it instead of falling back to the default. Nobody means "empty
+ * string" when they leave a field blank, so treat it as absent.
+ */
+function withoutBlanks(source: Record<string, string | undefined>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (typeof value === "string" && value.trim() !== "") out[key] = value;
   }
-  return parsed.data;
+  return out;
+}
+
+function describe(issues: { path: PropertyKey[]; message: string }[]): string {
+  return issues.map((i) => `  - ${i.path.join(".")}: ${i.message}`).join("\n");
+}
+
+function load() {
+  const source = withoutBlanks({ ...process.env, APP_URL: resolveAppUrl() });
+
+  const parsed = schema.safeParse(source);
+  if (parsed.success) return parsed.data;
+
+  if (isBuildPhase) {
+    const withPlaceholders = schema.safeParse({ ...BUILD_PLACEHOLDERS, ...source });
+    if (withPlaceholders.success) {
+      // Kept to one line: the build evaluates this once per worker process.
+      const missing = [...new Set(parsed.error.issues.map((i) => i.path.join(".")))].join(", ");
+      console.warn(
+        `[env] building without: ${missing} — not needed to compile, but the ` +
+          `deployment will fail on its first request unless they are set.`,
+      );
+      return withPlaceholders.data;
+    }
+    // Something is genuinely malformed rather than merely absent — for example
+    // EMAIL_PROVIDER set to a value that is not in the enum. Fail the build.
+    throw new Error(
+      `Invalid environment configuration:\n${describe(withPlaceholders.error.issues)}`,
+    );
+  }
+
+  throw new Error(`Invalid environment configuration:\n${describe(parsed.error.issues)}`);
 }
 
 export const env = load();

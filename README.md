@@ -110,9 +110,15 @@ page, which is a confusing way to find this out.
 ### 2. Environment variables
 
 Set these in **Project → Settings → Environment Variables**, for Production and
-Preview. `DATABASE_URL` and `AUTH_SECRET` are read at _build_ time as well as
-at runtime, so a missing one fails the build rather than the first request —
-which is the intent.
+Preview, then redeploy.
+
+The build itself does **not** need them — it imports route modules to collect
+metadata, and nothing there opens a connection — so a build with an incomplete
+environment succeeds and prints one warning naming what is missing. The strict
+check runs on the first request instead, which is the only place it can
+meaningfully run. Leaving a variable declared but blank counts as not setting
+it: `""` is treated as absent so the schema default applies, rather than
+failing validation on a value nobody chose.
 
 | Variable              | Value                                         |
 | --------------------- | --------------------------------------------- |
