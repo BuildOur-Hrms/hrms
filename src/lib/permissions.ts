@@ -72,6 +72,17 @@ const CATALOG = {
   reports: ["view_team", "view_all", "export", "manage"],
   audit: ["view_all", "export"],
   dashboard: ["view_team", "view_all"],
+
+  /**
+   * Platform scope — above any single company, and the one module `hr_admin`
+   * must never hold. Without it the two administrator roles would carry
+   * identical permission sets, and the only thing separating a company's HR
+   * admin from the platform owner would be a check on the role's name.
+   *
+   * `view_all`: read across companies (the RLS bypass flag).
+   * `manage`:   global settings, company provisioning, role definitions.
+   */
+  platform: ["view_all", "manage"],
 } as const satisfies Record<string, readonly Action[]>;
 
 export type Module = keyof typeof CATALOG;
@@ -154,6 +165,10 @@ const MANAGER_ONLY: readonly PermissionCode[] = [
   "dashboard.view_team",
 ];
 
+/**
+ * Everything an HR administrator does inside their own company. Deliberately
+ * excludes `platform.*`: company scope stops at the company.
+ */
 const HR_ADMIN_ONLY: readonly PermissionCode[] = [
   "employee.view_team",
   "employee.view_all",

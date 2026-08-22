@@ -4,6 +4,7 @@ import type { ZodType } from "zod";
 
 import { Prisma } from "@/generated/prisma/client";
 
+import { bootstrap } from "./bootstrap";
 import { authenticate, type RequestContext } from "./context";
 import { withTenant } from "./db";
 import { env } from "./env";
@@ -224,6 +225,11 @@ export function withApi<TBody = Empty, TQuery = Empty, TParams = Record<string, 
   handler: (args: ApiHandlerArgs<TBody, TQuery, TParams>) => Promise<unknown>,
 ) {
   return async function route(req: NextRequest, segment: RouteSegment): Promise<NextResponse> {
+    // Idempotent and process-wide. Registering here rather than relying only
+    // on `instrumentation.ts` is what makes the audit subscriber and job
+    // handlers exist in the bundle that is serving this request.
+    bootstrap();
+
     const requestId = req.headers.get("x-request-id") ?? randomUUID();
     const ip = clientIp(req);
     const log = childLogger({ requestId, method: req.method, path: req.nextUrl.pathname });

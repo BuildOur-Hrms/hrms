@@ -1,4 +1,5 @@
 import { mailer } from "./email";
+import { globalSingleton } from "./global-store";
 import { logger } from "./logger";
 import { registerJobHandler } from "./queue";
 import { registerAuditSubscriber } from "@/modules/audit/service";
@@ -6,16 +7,19 @@ import { registerAuditSubscriber } from "@/modules/audit/service";
 /**
  * One-time process wiring: event subscribers and job handlers.
  *
- * Called from `src/instrumentation.ts` on the web side and from the worker's
- * entry point, so both processes end up with the same subscriptions and
- * neither depends on some route happening to import the right module first.
+ * Called from `src/instrumentation.ts`, from `withApi` on every request, and
+ * from the worker's entry point. It is idempotent and cheap, and calling it
+ * from the request path is what guarantees the subscriptions exist in the
+ * process actually handling the request — instrumentation alone is not enough,
+ * because it is a separate bundle.
  */
 
-let done = false;
-
 export function bootstrap(): void {
-  if (done) return;
-  done = true;
+  // Process-wide, so the registrations happen exactly once however many
+  // bundles call this — and so that calling it from the request path is free.
+  const state = globalSingleton("__hrms_bootstrap__", () => ({ done: false }));
+  if (state.done) return;
+  state.done = true;
 
   registerAuditSubscriber();
 

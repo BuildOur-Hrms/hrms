@@ -28,13 +28,27 @@ export interface RequestMeta {
   requestId: string;
 }
 
-function actorFor(meta: RequestMeta, companyId: string, userId: string | null): EventActor {
+/**
+ * `db` is passed wherever the emit happens inside a transaction. It does two
+ * things: the audit row commits atomically with the change it describes, and —
+ * just as importantly — the audit writer reuses this connection instead of
+ * asking the pool for a second one. Opening an independent transaction from
+ * inside one is a self-deadlock: the outer holds a connection while waiting
+ * for the inner, which is waiting for the outer to release it.
+ */
+function actorFor(
+  meta: RequestMeta,
+  companyId: string,
+  userId: string | null,
+  db?: TenantTx,
+): EventActor {
   return {
     userId,
     companyId,
     ip: meta.ip,
     userAgent: meta.userAgent,
     requestId: meta.requestId,
+    ...(db ? { db } : {}),
   };
 }
 
@@ -65,8 +79,14 @@ export interface LoginResult {
 export async function login(input: LoginInput, meta: RequestMeta): Promise<LoginResult> {
   const email = input.email.toLowerCase();
 
-  return withPlatform(async (tx) => {
-    const user = await tx.user.findFirst({
+  // Read in its own short transaction. Everything that follows either needs no
+  // transaction at all (password verification) or needs one that COMMITS —
+  // which the old single-transaction shape could not provide, because the
+  // failure path threw, and throwing out of `$transaction` rolls back. The
+  // failed-attempt counter was being discarded on every wrong password, which
+  // silently disabled account lockout entirely.
+  const user = await withPlatform((tx) =>
+    tx.user.findFirst({
       where: { email },
       select: {
         id: true,
@@ -91,41 +111,48 @@ export async function login(input: LoginInput, meta: RequestMeta): Promise<Login
           },
         },
       },
+    }),
+  );
+
+  if (!user) {
+    // Burn the same CPU an argon2 verify would, so response time does not
+    // reveal whether the address exists.
+    await verifyPassword(await dummyHash(), input.password);
+    throw new AuthError("Invalid email or password");
+  }
+
+  const settings = await withPlatform((tx) =>
+    getSettings(tx as unknown as TenantTx, user.companyId),
+  );
+
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    throw new BusinessRuleError("Account is temporarily locked. Try again later.", {
+      rule: "account_locked",
+      until: user.lockedUntil.toISOString(),
     });
+  }
 
-    if (!user) {
-      // Burn the same CPU an argon2 verify would, so response time does not
-      // reveal whether the address exists.
-      await verifyPassword(await dummyHash(), input.password);
-      throw new AuthError("Invalid email or password");
-    }
+  if (user.status === "disabled") {
+    throw new BusinessRuleError("This account has been disabled.", {
+      rule: "account_disabled",
+    });
+  }
 
-    const settings = await getSettings(tx as unknown as TenantTx, user.companyId);
+  // `invited` accounts have no password yet. Saying so would confirm the
+  // address exists, so it looks like any other bad credential.
+  if (user.status !== "active" || !user.passwordHash) {
+    await verifyPassword(await dummyHash(), input.password);
+    throw new AuthError("Invalid email or password");
+  }
 
-    if (user.lockedUntil && user.lockedUntil > new Date()) {
-      throw new BusinessRuleError("Account is temporarily locked. Try again later.", {
-        rule: "account_locked",
-        until: user.lockedUntil.toISOString(),
-      });
-    }
+  // Deliberately outside any transaction: argon2 is tuned to ~100 ms, and
+  // holding a pooled connection for that long would serialise logins against
+  // the small pool a serverless deployment runs with.
+  const valid = await verifyPassword(user.passwordHash, input.password);
 
-    if (user.status === "disabled") {
-      throw new BusinessRuleError("This account has been disabled.", {
-        rule: "account_disabled",
-      });
-    }
-
-    // `invited` accounts have no password yet. Saying so would confirm the
-    // address exists, so it looks like any other bad credential.
-    if (user.status !== "active" || !user.passwordHash) {
-      await verifyPassword(await dummyHash(), input.password);
-      throw new AuthError("Invalid email or password");
-    }
-
-    const valid = await verifyPassword(user.passwordHash, input.password);
-
-    if (!valid) {
-      await registerFailedAttempt(tx, {
+  if (!valid) {
+    const lockedUntil = await withPlatform((tx) =>
+      registerFailedAttempt(tx, {
         userId: user.id,
         companyId: user.companyId,
         email,
@@ -133,49 +160,68 @@ export async function login(input: LoginInput, meta: RequestMeta): Promise<Login
         threshold: settings["security.lockout_threshold"],
         baseLockoutMinutes: settings["security.lockout_minutes"],
         meta,
-      });
-      throw new AuthError("Invalid email or password");
+      }),
+    );
+
+    // After the commit, so the notification cannot outlive a rolled-back lock.
+    if (lockedUntil) {
+      await enqueue(
+        "send-email",
+        {
+          to: email,
+          subject: "Your HRMS account has been temporarily locked",
+          ...lockoutEmailBody(lockedUntil),
+        },
+        { requestId: meta.requestId },
+      );
     }
 
-    // An employee who has exited keeps no way in, whatever the account says.
-    if (user.employee && (user.employee.status === "exited" || user.employee.deletedAt)) {
-      throw new BusinessRuleError("This account has been disabled.", { rule: "account_disabled" });
-    }
+    throw new AuthError("Invalid email or password");
+  }
 
+  // An employee who has exited keeps no way in, whatever the account says.
+  if (user.employee && (user.employee.status === "exited" || user.employee.deletedAt)) {
+    throw new BusinessRuleError("This account has been disabled.", { rule: "account_disabled" });
+  }
+
+  await withPlatform(async (tx) => {
     await tx.user.update({
       where: { id: user.id },
       data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() },
     });
-
-    const roles = user.userRoles.map((r) => r.role.name);
-    const permissions = [
-      ...new Set(
-        user.userRoles.flatMap((r) =>
-          r.role.rolePermissions.map((rp) => rp.permission.code as PermissionCode),
-        ),
-      ),
-    ];
-
-    await emit("auth.logged_in", { userId: user.id }, actorFor(meta, user.companyId, user.id));
-
-    return {
-      token: await createSessionToken({
-        userId: user.id,
-        companyId: user.companyId,
-        sessionVersion: user.sessionVersion,
-      }),
-      user: {
-        id: user.id,
-        email: user.email,
-        companyId: user.companyId,
-        employeeId: user.employee?.id ?? null,
-        firstName: user.employee?.firstName ?? null,
-        lastName: user.employee?.lastName ?? null,
-      },
-      roles,
-      permissions,
-    };
+    await emit(
+      "auth.logged_in",
+      { userId: user.id },
+      actorFor(meta, user.companyId, user.id, tx as unknown as TenantTx),
+    );
   });
+
+  const roles = user.userRoles.map((r) => r.role.name);
+  const permissions = [
+    ...new Set(
+      user.userRoles.flatMap((r) =>
+        r.role.rolePermissions.map((rp) => rp.permission.code as PermissionCode),
+      ),
+    ),
+  ];
+
+  return {
+    token: await createSessionToken({
+      userId: user.id,
+      companyId: user.companyId,
+      sessionVersion: user.sessionVersion,
+    }),
+    user: {
+      id: user.id,
+      email: user.email,
+      companyId: user.companyId,
+      employeeId: user.employee?.id ?? null,
+      firstName: user.employee?.firstName ?? null,
+      lastName: user.employee?.lastName ?? null,
+    },
+    roles,
+    permissions,
+  };
 }
 
 type PlatformTx = Parameters<Parameters<typeof withPlatform>[0]>[0];
@@ -198,7 +244,7 @@ async function registerFailedAttempt(
     baseLockoutMinutes: number;
     meta: RequestMeta;
   },
-): Promise<void> {
+): Promise<Date | null> {
   const failed = args.failedLoginCount + 1;
   const lockLevel = Math.floor(failed / args.threshold);
 
@@ -213,29 +259,20 @@ async function registerFailedAttempt(
     data: { failedLoginCount: failed, ...(lockedUntil ? { lockedUntil } : {}) },
   });
 
-  await emit(
-    "auth.login_failed",
-    { email: args.email, reason: "bad_credentials" },
-    actorFor(args.meta, args.companyId, args.userId),
-  );
+  const actor = actorFor(args.meta, args.companyId, args.userId, tx as unknown as TenantTx);
+
+  await emit("auth.login_failed", { email: args.email, reason: "bad_credentials" }, actor);
 
   if (lockedUntil) {
     await emit(
       "auth.account_locked",
       { userId: args.userId, until: lockedUntil.toISOString() },
-      actorFor(args.meta, args.companyId, args.userId),
-    );
-
-    await enqueue(
-      "send-email",
-      {
-        to: args.email,
-        subject: "Your HRMS account has been temporarily locked",
-        ...lockoutEmailBody(lockedUntil),
-      },
-      { requestId: args.meta.requestId },
+      actor,
     );
   }
+
+  // The caller sends the notification once this transaction has committed.
+  return lockedUntil;
 }
 
 function lockoutEmailBody(until: Date): { html: string; text: string } {
@@ -286,13 +323,15 @@ export async function revokeAllSessions(ctx: RequestContext, userId: string): Pr
 export async function forgotPassword(input: ForgotPasswordInput, meta: RequestMeta): Promise<void> {
   const email = input.email.toLowerCase();
 
-  await withPlatform(async (tx) => {
+  // Returns what to send, so the mail goes out after the token is committed
+  // rather than from inside the transaction that creates it.
+  const pending = await withPlatform(async (tx) => {
     const user = await tx.user.findFirst({
       where: { email },
       select: { id: true, companyId: true, email: true, status: true },
     });
 
-    if (!user || user.status === "disabled") return;
+    if (!user || user.status === "disabled") return null;
 
     const token = issueToken("reset");
     await tx.passwordResetToken.create({
@@ -307,25 +346,28 @@ export async function forgotPassword(input: ForgotPasswordInput, meta: RequestMe
     await emit(
       "auth.password_reset_requested",
       { userId: user.id },
-      actorFor(meta, user.companyId, user.id),
+      actorFor(meta, user.companyId, user.id, tx as unknown as TenantTx),
     );
 
-    const url = buildResetUrl(env.APP_URL, token.raw);
-    await enqueue(
-      "send-email",
-      {
-        to: user.email,
-        subject: "Reset your HRMS password",
-        text: `Use this link within the next hour to set a new password: ${url}`,
-        html: renderEmailShell(
-          "Reset your password",
-          `<p style="margin:0 0 20px;line-height:1.6">This link is valid for one hour and can be used once.</p>
-           <p style="margin:0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#18181b;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Choose a new password</a></p>`,
-        ),
-      },
-      { requestId: meta.requestId },
-    );
+    return { email: user.email, url: buildResetUrl(env.APP_URL, token.raw) };
   });
+
+  if (!pending) return;
+
+  await enqueue(
+    "send-email",
+    {
+      to: pending.email,
+      subject: "Reset your HRMS password",
+      text: `Use this link within the next hour to set a new password: ${pending.url}`,
+      html: renderEmailShell(
+        "Reset your password",
+        `<p style="margin:0 0 20px;line-height:1.6">This link is valid for one hour and can be used once.</p>
+           <p style="margin:0"><a href="${escapeHtml(pending.url)}" style="display:inline-block;background:#18181b;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Choose a new password</a></p>`,
+      ),
+    },
+    { requestId: meta.requestId },
+  );
 }
 
 /**
@@ -399,7 +441,7 @@ export async function resetPassword(
     await emit(
       expectedKind === "invite" ? "auth.invite_accepted" : "auth.password_reset",
       { userId: row.user.id },
-      actorFor(meta, row.user.companyId, row.user.id),
+      actorFor(meta, row.user.companyId, row.user.id, tx as unknown as TenantTx),
     );
   });
 }

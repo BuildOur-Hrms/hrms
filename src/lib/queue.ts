@@ -1,4 +1,5 @@
 import { env, isServerless } from "./env";
+import { globalSingleton } from "./global-store";
 import { logger } from "./logger";
 
 /**
@@ -38,7 +39,12 @@ export type JobHandler<N extends JobName> = (
   context: JobContext,
 ) => Promise<void>;
 
-const handlers = new Map<JobName, JobHandler<JobName>>();
+/** Per process, not per bundle — otherwise the route that enqueues a job and
+ * the entry point that registered its handler never meet. */
+const handlers = globalSingleton(
+  "__hrms_job_handlers__",
+  () => new Map<JobName, JobHandler<JobName>>(),
+);
 
 export function registerJobHandler<N extends JobName>(name: N, handler: JobHandler<N>): void {
   handlers.set(name, handler as JobHandler<JobName>);

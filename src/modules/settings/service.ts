@@ -2,6 +2,7 @@ import type { RequestContext } from "@/lib/context";
 import { withPlatform, type TenantTx } from "@/lib/db";
 import { ForbiddenError, ValidationError } from "@/lib/errors";
 import { emit } from "@/lib/events";
+import { can } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 
 import {
@@ -52,11 +53,15 @@ export async function getSettings(db: TenantTx, companyId: string): Promise<Reso
   const cached = cache.get(companyId);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
-  // The tenant extension widens reads on SystemSetting to
-  // `company_id = <tenant> OR company_id IS NULL`, so this one query returns
-  // both the company overrides and the platform defaults.
+  // The company filter is explicit rather than left to the tenant extension.
+  // `login` resolves settings before a tenant context exists and therefore
+  // calls this with the UNSCOPED platform client, where nothing is injected —
+  // without this, another company's row could override the caller's.
   const rows = await db.systemSetting.findMany({
-    where: { key: { in: SETTING_KEYS } },
+    where: {
+      key: { in: SETTING_KEYS },
+      OR: [{ companyId }, { companyId: null }],
+    },
     select: { key: true, value: true, companyId: true },
   });
 
@@ -96,8 +101,8 @@ export async function listSettings(ctx: RequestContext) {
     label: SETTINGS_CATALOG[key].label,
     scope: SETTINGS_CATALOG[key].scope,
     default: SETTINGS_CATALOG[key].default,
-    /** Cosmetic: the UI disables global keys for anyone but a super admin. */
-    editable: SETTINGS_CATALOG[key].scope === "company" || ctx.isSuperAdmin,
+    /** Cosmetic: the UI disables platform-scope keys for company admins. */
+    editable: SETTINGS_CATALOG[key].scope === "company" || can(ctx, "platform.manage"),
   }));
 }
 
@@ -108,7 +113,7 @@ export async function setSetting(ctx: RequestContext, key: string, rawValue: unk
 
   const definition = SETTINGS_CATALOG[key];
 
-  if (definition.scope === "global" && !ctx.isSuperAdmin) {
+  if (definition.scope === "global" && !can(ctx, "platform.manage")) {
     throw new ForbiddenError("Only a platform administrator can change global settings");
   }
 

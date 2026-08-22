@@ -85,7 +85,13 @@ export async function withPageData<T>(
   session: PageSession,
   fn: (db: Parameters<Parameters<typeof withTenant>[1]>[0]) => Promise<T>,
 ): Promise<T> {
-  return withTenant(session.companyId, fn, { superAdmin: session.isSuperAdmin });
+  // Deliberately does NOT set the RLS bypass flag for super admins. A platform
+  // owner browsing their own company needs no escape — normal tenant scoping
+  // resolves everything they can see — and turning the backstop off on every
+  // page they load would mean the layer only protects the people least likely
+  // to need protecting from. Cross-company reads go through `withPlatform`,
+  // explicitly, in platform services.
+  return withTenant(session.companyId, fn);
 }
 
 /** Server-side permission gate for a whole page. */

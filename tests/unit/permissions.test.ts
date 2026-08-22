@@ -88,6 +88,29 @@ describe("role matrix", () => {
     expect(hr).toContain("settings.manage");
   });
 
+  /**
+   * The two administrator roles must not be interchangeable. When they held
+   * identical permission sets, the only thing separating a company's HR admin
+   * from the platform owner was a check on the role's *name* — which the whole
+   * permission model exists to avoid.
+   */
+  it("keeps hr_admin strictly below super_admin", () => {
+    const hr = new Set(ROLE_PERMISSIONS.hr_admin);
+    const superAdmin = new Set(ROLE_PERMISSIONS.super_admin);
+
+    expect(hr.size).toBeLessThan(superAdmin.size);
+    for (const code of hr) expect(superAdmin.has(code)).toBe(true);
+  });
+
+  it("reserves the platform module for super_admin alone", () => {
+    for (const role of ["hr_admin", "manager", "employee"] as const) {
+      const platformCodes = ROLE_PERMISSIONS[role].filter((c) => c.startsWith("platform."));
+      expect(platformCodes).toEqual([]);
+    }
+    expect(ROLE_PERMISSIONS.super_admin).toContain("platform.manage");
+    expect(ROLE_PERMISSIONS.super_admin).toContain("platform.view_all");
+  });
+
   it("gives every role the self-service baseline", () => {
     for (const role of SYSTEM_ROLES) {
       expect(ROLE_PERMISSIONS[role]).toContain("employee.view_own");

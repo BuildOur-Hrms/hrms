@@ -1,4 +1,5 @@
 import type { TenantTx } from "./db";
+import { globalSingleton } from "./global-store";
 import { logger } from "./logger";
 
 /**
@@ -71,7 +72,15 @@ export interface DomainEvent<N extends DomainEventName = DomainEventName> {
 
 type Subscriber = (event: DomainEvent) => void | Promise<void>;
 
-const subscribers = new Map<DomainEventName | "*", Subscriber[]>();
+/**
+ * Anchored to the process rather than the module: subscribers registered from
+ * one Next.js bundle must be visible to `emit()` called from another. See
+ * ./global-store.ts.
+ */
+const subscribers = globalSingleton(
+  "__hrms_event_subscribers__",
+  () => new Map<DomainEventName | "*", Subscriber[]>(),
+);
 
 export function on<N extends DomainEventName>(
   name: N,

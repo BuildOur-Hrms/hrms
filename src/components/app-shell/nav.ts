@@ -1,17 +1,3 @@
-import {
-  Building2,
-  CalendarDays,
-  ClipboardList,
-  FileClock,
-  Home,
-  MapPin,
-  Settings,
-  ShieldCheck,
-  UserCircle,
-  Users,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-
 import type { PermissionCode } from "@/lib/permissions";
 
 /**
@@ -23,12 +9,30 @@ import type { PermissionCode } from "@/lib/permissions";
  *
  * Navigation visibility is cosmetic. Every destination re-checks server-side;
  * hiding a link is a courtesy, not a control.
+ *
+ * Icons are named rather than imported here. The filtering runs in the server
+ * layout and the result is handed to a client component, and React cannot
+ * serialise a component function across that boundary — passing `Home` instead
+ * of `"home"` throws at render time, which no type check or production build
+ * will catch for you. The client resolves the name through `./icons`.
  */
+
+export type NavIconName =
+  | "home"
+  | "profile"
+  | "team"
+  | "employees"
+  | "departments"
+  | "company"
+  | "locations"
+  | "roles"
+  | "settings"
+  | "audit";
 
 export interface NavItem {
   label: string;
   href: string;
-  icon: LucideIcon;
+  icon: NavIconName;
   /** Shown when the user holds any one of these. Empty = always shown. */
   permissions: PermissionCode[];
 }
@@ -41,11 +45,11 @@ export interface NavSection {
 export const NAV_SECTIONS: NavSection[] = [
   {
     label: "",
-    items: [{ label: "Dashboard", href: "/dashboard", icon: Home, permissions: [] }],
+    items: [{ label: "Dashboard", href: "/dashboard", icon: "home", permissions: [] }],
   },
   {
     label: "My space",
-    items: [{ label: "My profile", href: "/me/profile", icon: UserCircle, permissions: [] }],
+    items: [{ label: "My profile", href: "/me/profile", icon: "profile", permissions: [] }],
   },
   {
     label: "Team",
@@ -53,7 +57,7 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         label: "My team",
         href: "/team",
-        icon: Users,
+        icon: "team",
         permissions: ["employee.view_team"],
       },
     ],
@@ -64,13 +68,13 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         label: "Employees",
         href: "/hr/employees",
-        icon: Users,
+        icon: "employees",
         permissions: ["employee.view_all"],
       },
       {
         label: "Departments",
         href: "/hr/departments",
-        icon: ClipboardList,
+        icon: "departments",
         permissions: ["department.manage", "designation.manage"],
       },
     ],
@@ -81,26 +85,26 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         label: "Company",
         href: "/admin/company",
-        icon: Building2,
+        icon: "company",
         permissions: ["company.manage"],
       },
       {
         label: "Locations",
         href: "/admin/locations",
-        icon: MapPin,
+        icon: "locations",
         permissions: ["company.manage"],
       },
-      { label: "Roles", href: "/admin/roles", icon: ShieldCheck, permissions: ["roles.view_all"] },
+      { label: "Roles", href: "/admin/roles", icon: "roles", permissions: ["roles.view_all"] },
       {
         label: "Settings",
         href: "/admin/settings",
-        icon: Settings,
+        icon: "settings",
         permissions: ["settings.manage"],
       },
       {
         label: "Audit log",
         href: "/admin/audit-logs",
-        icon: FileClock,
+        icon: "audit",
         permissions: ["audit.view_all"],
       },
     ],
@@ -110,12 +114,12 @@ export const NAV_SECTIONS: NavSection[] = [
 /**
  * Milestones not yet built. Kept here so the nav's eventual shape is visible
  * in one place rather than scattered across future commits.
- *
- * M2 attendance · M3 leave and holidays · M4 notifications and reports.
  */
-export const PLANNED_NAV: { label: string; icon: LucideIcon; milestone: string }[] = [
-  { label: "Attendance", icon: CalendarDays, milestone: "M2" },
-  { label: "Leave", icon: CalendarDays, milestone: "M3" },
+export const PLANNED_NAV: { label: string; milestone: string }[] = [
+  { label: "Attendance", milestone: "M2" },
+  { label: "Leave", milestone: "M3" },
+  { label: "Holidays", milestone: "M3" },
+  { label: "Notifications", milestone: "M4" },
 ];
 
 export function visibleSections(permissions: ReadonlySet<PermissionCode>): NavSection[] {

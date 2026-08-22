@@ -18,7 +18,9 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
-    "db:doctor": "tsx scripts/db-doctor.ts"
+    "db:doctor": "tsx scripts/db-doctor.ts",
+    "db:local": "tsx scripts/local-db.ts",
+    "db:role": "tsx scripts/create-app-role.ts"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
@@ -57,6 +59,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.6",
+    "@electric-sql/pglite-socket": "^0.2.9",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

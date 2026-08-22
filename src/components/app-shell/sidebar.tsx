@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
+import { NAV_ICONS } from "./icons";
 import type { NavSection } from "./nav";
 
 export function SidebarNav({
@@ -43,7 +44,7 @@ export function SidebarNav({
               // `startsWith` so a detail route keeps its list item highlighted,
               // guarded against `/team` also matching `/teams`.
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const Icon = item.icon;
+              const Icon = NAV_ICONS[item.icon];
               return (
                 <Link
                   key={item.href}

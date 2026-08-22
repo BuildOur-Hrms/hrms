@@ -1,5 +1,6 @@
 import type { RequestContext } from "@/lib/context";
 import { withPlatform, type TenantTx } from "@/lib/db";
+import { globalSingleton } from "@/lib/global-store";
 import { type DomainEventMap, type DomainEventName, type EventActor, onAny } from "@/lib/events";
 import { logger } from "@/lib/logger";
 
@@ -134,15 +135,14 @@ export async function record(ctx: RequestContext, entry: AuditEntry): Promise<vo
   );
 }
 
-let registered = false;
-
 /**
- * Subscribe the audit writer to the event bus. Called once at startup from
+ * Subscribe the audit writer to the event bus. Called from
  * `src/lib/bootstrap.ts`.
  */
 export function registerAuditSubscriber(): void {
-  if (registered) return;
-  registered = true;
+  const state = globalSingleton("__hrms_audit_subscriber__", () => ({ registered: false }));
+  if (state.registered) return;
+  state.registered = true;
 
   onAny(async (event) => {
     const map = AUDIT_MAP as Record<

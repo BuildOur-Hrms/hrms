@@ -55,9 +55,50 @@ function assert(condition: boolean, pass: string, failMessage: string) {
   }
 }
 
+/**
+ * A login role that policies actually constrain. Preferred over guessing at a
+ * name: whatever it is called, what matters is that it is neither a superuser
+ * nor holds BYPASSRLS.
+ */
+async function findRestrictedRole(client: Client): Promise<string | null> {
+  const result = await client.query<{ rolname: string }>(`
+    SELECT rolname FROM pg_roles
+     WHERE rolcanlogin
+       AND NOT rolsuper
+       AND NOT rolbypassrls
+       AND rolname NOT LIKE 'pg\_%'
+     ORDER BY rolname
+     LIMIT 1
+  `);
+  return result.rows[0]?.rolname ?? null;
+}
+
+/**
+ * Count employees visible to a session scoped to a company id that owns
+ * nothing. Everything is transaction-local and rolled back.
+ */
+async function probe(client: Client, asRole: string | null): Promise<number> {
+  await client.query("BEGIN");
+  try {
+    if (asRole) await client.query(`SET LOCAL ROLE "${asRole}"`);
+    await client.query(
+      "SELECT set_config('app.company_id', '00000000-0000-0000-0000-000000000000', true)",
+    );
+    const scoped = await client.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM employees",
+    );
+    return Number(scoped.rows[0]?.count ?? 0);
+  } finally {
+    await client.query("ROLLBACK");
+  }
+}
+
 async function main() {
-  const url = process.env["DIRECT_DATABASE_URL"] ?? process.env["DATABASE_URL"];
-  if (!url) throw new Error("Set DIRECT_DATABASE_URL or DATABASE_URL first");
+  // DATABASE_URL first, on purpose: this checks the role the *application*
+  // connects as. Verifying RLS over the owner connection proves nothing, since
+  // the owner is exactly the role policies do not constrain.
+  const url = process.env["DATABASE_URL"] ?? process.env["DIRECT_DATABASE_URL"];
+  if (!url) throw new Error("Set DATABASE_URL first");
 
   const client = new Client({ connectionString: url });
   await client.connect();
@@ -183,30 +224,47 @@ async function main() {
     const total = Number(totalEmployees.rows[0]?.count ?? 0);
     info(`${total} employee row${total === 1 ? "" : "s"} in the table`);
 
-    await client.query("BEGIN");
-    try {
-      // A company id that certainly owns nothing.
-      await client.query(
-        "SELECT set_config('app.company_id', '00000000-0000-0000-0000-000000000000', true)",
-      );
-      const scoped = await client.query<{ count: string }>(
-        "SELECT count(*)::text AS count FROM employees",
-      );
-      const visible = Number(scoped.rows[0]?.count ?? 0);
+    if (total === 0) {
+      warnings += 1;
+      warn("no employee rows yet — the probe cannot prove isolation");
+      info("Run `npm run db:seed` with SEED_DEMO=true, then re-run this.");
+    } else {
+      /**
+       * Two questions that look identical when they fail, and are not:
+       *
+       *   1. Are the policies themselves correct? Answered by running the
+       *      probe under a role that policies apply to.
+       *   2. Is the role the app connects as actually subject to them?
+       *
+       * A deployment needs both. Reporting them separately is the difference
+       * between "the SQL is wrong" and "the connection string is wrong".
+       */
+      const restricted = await findRestrictedRole(client);
 
-      if (total === 0) {
-        warnings += 1;
-        warn("no employee rows yet — the probe cannot prove isolation");
-        info("Run `npm run db:seed` with SEED_DEMO=true, then re-run this.");
-      } else {
+      if (restricted) {
+        const visible = await probe(client, restricted);
         assert(
           visible === 0,
-          "a session scoped to a foreign company sees zero employees",
-          `a foreign-scoped session saw ${visible} of ${total} employees — RLS is NOT protecting this table`,
+          `policies are correct — scoped to a foreign company, ${restricted} sees zero of ${total} employees`,
+          `under ${restricted}, a foreign-scoped session still saw ${visible} of ${total} employees — the policies themselves are wrong`,
+        );
+      } else {
+        warnings += 1;
+        warn("no non-privileged role found, so policy correctness is untested");
+        info("Run `npm run db:role` to create one.");
+      }
+
+      const visibleAsConnected = await probe(client, null);
+      if (me.is_super || me.bypass_rls) {
+        // Already warned about above; do not double-count it as a failure.
+        info(`as ${me.user}: sees ${visibleAsConnected} of ${total} (expected — it bypasses RLS)`);
+      } else {
+        assert(
+          visibleAsConnected === 0,
+          `the connected role (${me.user}) is subject to the policies`,
+          `the connected role (${me.user}) saw ${visibleAsConnected} of ${total} employees`,
         );
       }
-    } finally {
-      await client.query("ROLLBACK");
     }
 
     // ── 6. audit log immutability
