@@ -45,7 +45,8 @@ async function main() {
   const ownerUrl = process.env["DIRECT_DATABASE_URL"] ?? process.env["DATABASE_URL"];
   if (!ownerUrl) throw new Error("Set DIRECT_DATABASE_URL to the owner connection first");
 
-  const password = process.env["APP_DB_PASSWORD"] ?? randomBytes(24).toString("base64url");
+  const supplied = process.env["APP_DB_PASSWORD"];
+  const password = supplied ?? randomBytes(24).toString("base64url");
 
   const client = new Client({ connectionString: ownerUrl });
   await client.connect();
@@ -146,7 +147,15 @@ async function main() {
     }
 
     console.log(`Leave SUPABASE_DB_URL as the owner (${owner.username}) — migrations need DDL.`);
-    console.log(`Then re-run this workflow with "doctor" to confirm RLS is enforced.\n`);
+    if (!supplied) {
+      console.log(
+        `\nNOTE: no APP_DB_PASSWORD was supplied, so one was generated. A CI log\n` +
+          `redacts secrets, so the string above may render as *** and be unusable.\n` +
+          `Set APP_DB_PASSWORD as a repository secret and re-run for a readable one.`,
+      );
+    }
+
+    console.log(`\nThen re-run this workflow with "doctor" to confirm RLS is enforced.\n`);
   } finally {
     await client.end();
   }
