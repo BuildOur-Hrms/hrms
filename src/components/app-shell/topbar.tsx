@@ -73,7 +73,7 @@ export function Topbar({
         >
           <Menu className="size-5" />
         </SheetTrigger>
-        <SheetContent side="left" className="w-72 p-4">
+        <SheetContent side="left" className="bg-sidebar w-72 p-4">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <SidebarNav
             sections={sections}

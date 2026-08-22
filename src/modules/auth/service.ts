@@ -363,7 +363,7 @@ export async function forgotPassword(input: ForgotPasswordInput, meta: RequestMe
       html: renderEmailShell(
         "Reset your password",
         `<p style="margin:0 0 20px;line-height:1.6">This link is valid for one hour and can be used once.</p>
-           <p style="margin:0"><a href="${escapeHtml(pending.url)}" style="display:inline-block;background:#18181b;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Choose a new password</a></p>`,
+           <p style="margin:0"><a href="${escapeHtml(pending.url)}" style="display:inline-block;background:#C95A12;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Choose a new password</a></p>`,
       ),
     },
     { requestId: meta.requestId },
@@ -531,7 +531,7 @@ export async function inviteUser(
       html: renderEmailShell(
         "Welcome to HRMS",
         `<p style="margin:0 0 20px;line-height:1.6">Your account is ready. Set a password to sign in. This link is valid for 7 days.</p>
-         <p style="margin:0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#18181b;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Set your password</a></p>`,
+         <p style="margin:0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#C95A12;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Set your password</a></p>`,
       ),
     },
     { requestId: ctx.requestId },

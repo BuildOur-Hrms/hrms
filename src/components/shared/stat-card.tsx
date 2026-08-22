@@ -17,12 +17,14 @@ export function StatCard({
     <Card>
       <CardContent className="flex items-start justify-between gap-3 p-5">
         <div className="min-w-0">
-          <p className="text-muted-foreground text-sm">{label}</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+          <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+            {label}
+          </p>
+          <p className="mt-1.5 text-2xl font-semibold tabular-nums">{value}</p>
           {hint ? <p className="text-muted-foreground mt-1 truncate text-xs">{hint}</p> : null}
         </div>
         {Icon ? (
-          <div className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-lg">
+          <div className="bg-brand-soft text-brand-soft-foreground flex size-9 shrink-0 items-center justify-center rounded-lg">
             <Icon className="size-4" />
           </div>
         ) : null}

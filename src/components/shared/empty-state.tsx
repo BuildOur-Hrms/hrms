@@ -12,9 +12,9 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed px-6 py-14 text-center">
+    <div className="bg-card/60 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-6 py-14 text-center">
       {Icon ? (
-        <div className="bg-muted text-muted-foreground flex size-11 items-center justify-center rounded-full">
+        <div className="bg-brand-soft text-brand-soft-foreground flex size-11 items-center justify-center rounded-full">
           <Icon className="size-5" />
         </div>
       ) : null}

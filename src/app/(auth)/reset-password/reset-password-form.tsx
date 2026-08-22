@@ -66,7 +66,7 @@ export function ResetPasswordForm() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CheckCircle2 className="size-5 text-emerald-600" />
+            <CheckCircle2 className="text-success size-5" />
             Password set
           </CardTitle>
           <CardDescription>

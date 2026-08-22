@@ -9,7 +9,7 @@ import { ButtonLink } from "@/components/shared/button-link";
 export default function AppNotFound() {
   return (
     <div className="flex min-h-[60svh] flex-col items-center justify-center gap-4 text-center">
-      <div className="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-full">
+      <div className="bg-brand-soft text-brand-soft-foreground flex size-12 items-center justify-center rounded-full">
         <Compass className="size-5" />
       </div>
 

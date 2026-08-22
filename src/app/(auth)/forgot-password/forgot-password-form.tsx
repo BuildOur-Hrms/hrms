@@ -45,7 +45,7 @@ export function ForgotPasswordForm() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CheckCircle2 className="size-5 text-emerald-600" />
+            <CheckCircle2 className="text-success size-5" />
             Check your inbox
           </CardTitle>
           <CardDescription>

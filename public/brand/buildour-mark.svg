@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="BuildOur AI">
+  <rect width="200" height="200" rx="44" fill="#C95A12" />
+  <g transform="translate(34 34)" fill="#FFFFFF">
+    <!-- mid-edge pixels -->
+    <rect x="60" y="0" width="12" height="12" rx="2.5" />
+    <rect x="0" y="60" width="12" height="12" rx="2.5" />
+    <rect x="120" y="60" width="12" height="12" rx="2.5" />
+    <rect x="60" y="120" width="12" height="12" rx="2.5" />
+    <!-- corner brackets -->
+    <rect x="12" y="12" width="24" height="12" rx="2.5" />
+    <rect x="12" y="12" width="12" height="24" rx="2.5" />
+    <rect x="108" y="12" width="24" height="12" rx="2.5" />
+    <rect x="120" y="12" width="12" height="24" rx="2.5" />
+    <rect x="108" y="120" width="24" height="12" rx="2.5" />
+    <rect x="120" y="108" width="12" height="24" rx="2.5" />
+    <rect x="12" y="120" width="24" height="12" rx="2.5" />
+    <rect x="12" y="108" width="12" height="24" rx="2.5" />
+    <!-- pinwheel core -->
+    <rect x="49" y="49" width="22" height="10" rx="2.5" />
+    <rect x="73" y="49" width="10" height="22" rx="2.5" />
+    <rect x="61" y="73" width="22" height="10" rx="2.5" />
+    <rect x="49" y="61" width="10" height="22" rx="2.5" />
+  </g>
+</svg>

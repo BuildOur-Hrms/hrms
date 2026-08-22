@@ -1,9 +1,9 @@
 "use client";
 
-import { Building2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { BrandMark } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 
 import { NAV_ICONS } from "./icons";
@@ -23,20 +23,18 @@ export function SidebarNav({
   return (
     <div className="flex h-full flex-col gap-4">
       <div className="flex items-center gap-2.5 px-2 py-1">
-        <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg">
-          <Building2 className="size-4" />
-        </div>
+        <BrandMark className="size-8 shrink-0" />
         <div className="min-w-0">
           <p className="truncate text-sm leading-tight font-semibold">{companyName}</p>
-          <p className="text-muted-foreground text-xs leading-tight">HRMS</p>
+          <p className="text-muted-foreground text-xs leading-tight">BuildOur AI HRMS</p>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto">
+      <nav className="scrollbar-warm flex-1 space-y-5 overflow-y-auto">
         {sections.map((section, index) => (
           <div key={section.label || `section-${index}`} className="space-y-1">
             {section.label ? (
-              <p className="text-muted-foreground px-3 text-xs font-medium tracking-wide uppercase">
+              <p className="text-muted-foreground px-3 text-[0.6875rem] font-semibold tracking-wider uppercase">
                 {section.label}
               </p>
             ) : null}
@@ -52,13 +50,18 @@ export function SidebarNav({
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
                     active
-                      ? "bg-accent text-accent-foreground font-medium"
-                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground",
                   )}
                 >
-                  <Icon className="size-4 shrink-0" />
+                  <Icon
+                    className={cn(
+                      "size-4 shrink-0",
+                      active ? "text-brand" : "text-muted-foreground",
+                    )}
+                  />
                   {item.label}
                 </Link>
               );

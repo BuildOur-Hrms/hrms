@@ -12,6 +12,24 @@
 - **Dark mode**: P3 (design tokens ready via CSS variables from day 1).
 - **Accessibility**: visible focus rings, WCAG AA contrast, all interactive elements keyboard reachable, table row actions in a menu (not hover-only), form errors announced (`aria-describedby`), dialogs focus-trapped.
 
+### Brand palette (BuildOur AI)
+
+The HRMS shares a visual identity with the rest of the BuildOur AI product family. Every value below lives as a CSS variable in `src/app/globals.css` and is consumed only through Tailwind tokens (`bg-card`, `text-brand`, `bg-accent`, …) — no screen hardcodes a colour.
+
+| Role | Light | Token |
+| --- | --- | --- |
+| Brand / primary action, active state, focus ring | `#C95A12` | `--brand`, `--primary`, `--ring` |
+| Soft orange — selected and active backgrounds | `#F7E9DE` | `--brand-soft`, `--accent` |
+| Page background (warm off-white) | `#FCFBF9` | `--background` |
+| Cards and content surfaces | `#FFFFFF` | `--card`, `--popover` |
+| Borders and dividers (warm grey) | `#E7E1DB` | `--border`, `--input` |
+| Primary text | `#171717` | `--foreground` |
+| Secondary text (warm grey) | `#6F6A65` | `--muted-foreground` |
+
+Radii sit at 8–12px (`--radius: 0.625rem`), shadows are warm and near-invisible (`shadow-xs`/`shadow-sm`) — borders do the separating, not elevation. Dark mode inverts onto warm brown-black paper rather than neutral black, so the warmth survives the switch.
+
+The mark is `public/brand/buildour-mark.svg`, mirrored as `src/app/icon.svg` (favicon) and as a token-coloured inline copy in `src/components/brand/logo.tsx`. The three share one geometry; change one and change all three.
+
 ## 2. Global conventions (defined once — screens below note only deltas)
 
 - **List screens**: toolbar (search input, filter dropdowns, sort select) → server-paginated DataTable (pageSize 20, column sort, total count) → row actions menu → bulk-select only where noted. **Empty state**: icon + one-line message + primary CTA. **Loading**: skeleton rows. **Error**: inline alert + Retry.

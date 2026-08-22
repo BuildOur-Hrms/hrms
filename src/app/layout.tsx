@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Inter } from "next/font/google";
 
 import { Providers } from "@/components/providers";
 
 import "./globals.css";
 
-const sans = Geist({
+// Inter is the BuildOur AI product typeface: neutral, tight, and legible at
+// the small sizes an HR table spends most of its life in.
+const sans = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
@@ -19,8 +21,8 @@ const mono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "HRMS",
-    template: "%s · HRMS",
+    default: "BuildOur AI HRMS",
+    template: "%s · BuildOur AI HRMS",
   },
   description: "Employee lifecycle management: people, time, leave and payroll.",
   robots: { index: false, follow: false },

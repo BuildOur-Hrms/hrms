@@ -4,12 +4,30 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * BuildOur AI visual identity.
+ *
+ * Every surface in the app reads its colour from the tokens below, so the
+ * palette lives in exactly one place: warm terracotta for anything the user
+ * should act on, warm off-white paper, white cards, and borders barely a
+ * shade away from the paper they sit on.
+ */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-soft-foreground: var(--brand-soft-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -46,85 +64,158 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Shadows are warm and barely there — depth without visual noise. */
+  --shadow-xs: 0 1px 2px 0 oklch(0.47 0.03 60 / 0.05);
+  --shadow-sm: 0 1px 2px 0 oklch(0.47 0.03 60 / 0.05), 0 1px 3px 0 oklch(0.47 0.03 60 / 0.05);
+  --shadow-md:
+    0 2px 4px -2px oklch(0.47 0.03 60 / 0.06), 0 4px 12px -2px oklch(0.47 0.03 60 / 0.08);
+  --shadow-lg:
+    0 4px 8px -4px oklch(0.47 0.03 60 / 0.07), 0 12px 28px -6px oklch(0.47 0.03 60 / 0.1);
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* Brand — #C95A12 terracotta on #F7E9DE soft orange. */
+  --brand: oklch(0.5979 0.1596 46.61);
+  --brand-foreground: oklch(1 0 0);
+  --brand-soft: oklch(0.9421 0.0212 60.74);
+  --brand-soft-foreground: oklch(0.4667 0.123 47);
+
+  /* Surfaces — warm off-white paper (#FCFBF9), white cards. */
+  --background: oklch(0.9883 0.0029 84.56);
+  --foreground: oklch(0.2046 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.2046 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --popover-foreground: oklch(0.2046 0 0);
+
+  --primary: oklch(0.5979 0.1596 46.61);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.9593 0.0062 75.41);
+  --secondary-foreground: oklch(0.2046 0 0);
+  --muted: oklch(0.9593 0.0062 75.41);
+  --muted-foreground: oklch(0.5273 0.01 67.61);
+
+  /* Selected and active elements sit on soft orange, never on grey. */
+  --accent: oklch(0.9421 0.0212 60.74);
+  --accent-foreground: oklch(0.4667 0.123 47);
+
+  --destructive: oklch(0.5433 0.174 29.7);
+  --success: oklch(0.5318 0.094 161.68);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.5912 0.1306 64.26);
+  --warning-foreground: oklch(1 0 0);
+  --info: oklch(0.5061 0.0832 235.78);
+  --info-foreground: oklch(1 0 0);
+
+  /* #E7E1DB — a warm grey a hair away from the paper it divides. */
+  --border: oklch(0.9128 0.0104 67.7);
+  --input: oklch(0.9128 0.0104 67.7);
+  --ring: oklch(0.5979 0.1596 46.61);
+
+  --chart-1: oklch(0.5979 0.1596 46.61);
+  --chart-2: oklch(0.7117 0.1311 54.94);
+  --chart-3: oklch(0.8087 0.0955 57.04);
+  --chart-4: oklch(0.5529 0.0537 52.99);
+  --chart-5: oklch(0.7829 0.0216 67.5);
+
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  --sidebar: oklch(0.9798 0.0045 78.3);
+  --sidebar-foreground: oklch(0.2046 0 0);
+  --sidebar-primary: oklch(0.5979 0.1596 46.61);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.9421 0.0212 60.74);
+  --sidebar-accent-foreground: oklch(0.4667 0.123 47);
+  --sidebar-border: oklch(0.9128 0.0104 67.7);
+  --sidebar-ring: oklch(0.5979 0.1596 46.61);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  /* The same warmth, inverted: brown-black paper rather than neutral black. */
+  --brand: oklch(0.6761 0.1542 46.14);
+  --brand-foreground: oklch(0.193 0.0108 80.52);
+  --brand-soft: oklch(0.2999 0.0325 60.21);
+  --brand-soft-foreground: oklch(0.8137 0.098 56.72);
+
+  --background: oklch(0.193 0.0108 80.52);
+  --foreground: oklch(0.9629 0.0079 73.74);
+  --card: oklch(0.2292 0.0112 73.36);
+  --card-foreground: oklch(0.9629 0.0079 73.74);
+  --popover: oklch(0.2292 0.0112 73.36);
+  --popover-foreground: oklch(0.9629 0.0079 73.74);
+
+  --primary: oklch(0.6761 0.1542 46.14);
+  --primary-foreground: oklch(0.193 0.0108 80.52);
+  --secondary: oklch(0.2679 0.0131 72.27);
+  --secondary-foreground: oklch(0.9629 0.0079 73.74);
+  --muted: oklch(0.2679 0.0131 72.27);
+  --muted-foreground: oklch(0.7043 0.0167 67.55);
+
+  --accent: oklch(0.2999 0.0325 60.21);
+  --accent-foreground: oklch(0.8137 0.098 56.72);
+
+  --destructive: oklch(0.6773 0.1485 31.33);
+  --success: oklch(0.7415 0.1006 159.68);
+  --success-foreground: oklch(0.193 0.0108 80.52);
+  --warning: oklch(0.7603 0.1193 71.82);
+  --warning-foreground: oklch(0.193 0.0108 80.52);
+  --info: oklch(0.743 0.0688 231.93);
+  --info-foreground: oklch(0.193 0.0108 80.52);
+
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.6761 0.1542 46.14);
+
+  --chart-1: oklch(0.6761 0.1542 46.14);
+  --chart-2: oklch(0.7117 0.1311 54.94);
+  --chart-3: oklch(0.8087 0.0955 57.04);
+  --chart-4: oklch(0.5529 0.0537 52.99);
+  --chart-5: oklch(0.7043 0.0167 67.55);
+
+  --sidebar: oklch(0.1809 0.0054 39.35);
+  --sidebar-foreground: oklch(0.9629 0.0079 73.74);
+  --sidebar-primary: oklch(0.6761 0.1542 46.14);
+  --sidebar-primary-foreground: oklch(0.193 0.0108 80.52);
+  --sidebar-accent: oklch(0.2999 0.0325 60.21);
+  --sidebar-accent-foreground: oklch(0.8137 0.098 56.72);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.6761 0.1542 46.14);
+
+  /* Warm shadows read as mud on a dark surface; go neutral and deeper. */
+  --shadow-xs: 0 1px 2px 0 oklch(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.4), 0 1px 3px 0 oklch(0 0 0 / 0.35);
+  --shadow-md: 0 2px 4px -2px oklch(0 0 0 / 0.4), 0 4px 12px -2px oklch(0 0 0 / 0.45);
+  --shadow-lg: 0 4px 8px -4px oklch(0 0 0 / 0.45), 0 12px 28px -6px oklch(0 0 0 / 0.5);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  /* The font utility has to live on `body`, not `html`: next/font defines
+     `--font-sans` via a class on the body element, so `font-sans` on `html`
+     resolves against an undefined variable and silently falls back to the
+     browser default serif. */
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
-  html {
-    @apply font-sans;
+  /* Headings carry the tight, confident tracking of the reference product. */
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight;
+  }
+  /* Selection picks up the brand rather than the browser default blue. */
+  ::selection {
+    background-color: var(--brand-soft);
+    color: var(--brand-soft-foreground);
+  }
+}
+
+@layer utilities {
+  /* Thin, warm scrollbars for the sidebar and long tables. */
+  .scrollbar-warm {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
 }

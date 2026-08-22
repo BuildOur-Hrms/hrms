@@ -181,7 +181,7 @@ export function AuditViewer() {
         />
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border">
+          <div className="bg-card overflow-x-auto rounded-xl border shadow-xs">
             <Table>
               <TableHeader>
                 <TableRow>

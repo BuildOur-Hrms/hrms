@@ -108,12 +108,13 @@ export const mailer: Mailer = selectMailer();
 export function renderEmailShell(title: string, bodyHtml: string): string {
   return `<!doctype html>
 <html lang="en">
-  <body style="margin:0;padding:24px;background:#f4f4f5;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#18181b">
-    <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px">
+  <body style="margin:0;padding:24px;background:#FCFBF9;font-family:Inter,system-ui,-apple-system,'Segoe UI',sans-serif;color:#171717">
+    <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #E7E1DB;border-radius:12px;padding:32px">
+      <div style="width:32px;height:32px;border-radius:8px;background:#C95A12;margin:0 0 20px"></div>
       <h1 style="margin:0 0 16px;font-size:20px;font-weight:600">${escapeHtml(title)}</h1>
       ${bodyHtml}
-      <p style="margin:32px 0 0;font-size:12px;color:#71717a">
-        Sent by HRMS. If you were not expecting this email you can ignore it.
+      <p style="margin:32px 0 0;font-size:12px;color:#6F6A65">
+        Sent by BuildOur AI HRMS. If you were not expecting this email you can ignore it.
       </p>
     </div>
   </body>

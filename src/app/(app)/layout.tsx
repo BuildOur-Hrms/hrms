@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-svh">
-      <aside className="bg-muted/30 hidden w-64 shrink-0 border-r p-4 lg:block">
+      <aside className="bg-sidebar border-sidebar-border hidden w-64 shrink-0 border-r p-4 lg:block">
         <SidebarNav sections={sections} companyName={session.company.name} />
       </aside>
 

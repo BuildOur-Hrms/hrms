@@ -147,7 +147,7 @@ export function ManagedList<T extends { id: string }>({
           {...(emptyDescription ? { description: emptyDescription } : {})}
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="bg-card overflow-x-auto rounded-xl border shadow-xs">
           <Table>
             <TableHeader>
               <TableRow>

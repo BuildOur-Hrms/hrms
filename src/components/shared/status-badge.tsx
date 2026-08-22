@@ -4,39 +4,32 @@ import { cn } from "@/lib/utils";
 /**
  * One place that decides what each lifecycle status looks like, so a status
  * never reads as "active" on one screen and "Active" on another.
+ *
+ * The colours are mixed from the theme's semantic tokens rather than picked
+ * out of Tailwind's stock palette, so they carry the same warmth as the rest
+ * of the product and follow the theme into dark mode without a second set of
+ * hand-picked values.
  */
+const TINT = {
+  /** Terracotta — the brand tint, for the state the product is drawing you to. */
+  brand: "bg-brand-soft text-brand-soft-foreground",
+  success: "bg-success/12 text-success dark:bg-success/15",
+  warning: "bg-warning/12 text-warning dark:bg-warning/15",
+  info: "bg-info/12 text-info dark:bg-info/15",
+  neutral: "bg-muted text-muted-foreground",
+} as const;
+
 const EMPLOYEE_STATUS: Record<string, { label: string; className: string }> = {
-  onboarding: {
-    label: "Onboarding",
-    className: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-  },
-  active: {
-    label: "Active",
-    className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-  },
-  on_notice: {
-    label: "On notice",
-    className: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300",
-  },
-  exited: {
-    label: "Exited",
-    className: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-  },
+  onboarding: { label: "Onboarding", className: TINT.brand },
+  active: { label: "Active", className: TINT.success },
+  on_notice: { label: "On notice", className: TINT.warning },
+  exited: { label: "Exited", className: TINT.neutral },
 };
 
 const USER_STATUS: Record<string, { label: string; className: string }> = {
-  invited: {
-    label: "Invited",
-    className: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300",
-  },
-  active: {
-    label: "Active",
-    className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-  },
-  disabled: {
-    label: "Disabled",
-    className: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-  },
+  invited: { label: "Invited", className: TINT.warning },
+  active: { label: "Active", className: TINT.success },
+  disabled: { label: "Disabled", className: TINT.neutral },
 };
 
 const EMPLOYMENT_TYPE: Record<string, string> = {
@@ -47,7 +40,7 @@ const EMPLOYMENT_TYPE: Record<string, string> = {
 };
 
 export function EmployeeStatusBadge({ status }: { status: string }) {
-  const entry = EMPLOYEE_STATUS[status] ?? { label: status, className: "" };
+  const entry = EMPLOYEE_STATUS[status] ?? { label: status, className: TINT.neutral };
   return (
     <Badge variant="secondary" className={cn("font-medium", entry.className)}>
       {entry.label}
@@ -56,7 +49,7 @@ export function EmployeeStatusBadge({ status }: { status: string }) {
 }
 
 export function UserStatusBadge({ status }: { status: string }) {
-  const entry = USER_STATUS[status] ?? { label: status, className: "" };
+  const entry = USER_STATUS[status] ?? { label: status, className: TINT.neutral };
   return (
     <Badge variant="secondary" className={cn("font-medium", entry.className)}>
       {entry.label}
