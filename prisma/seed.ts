@@ -23,6 +23,15 @@ import { issueToken, buildInviteUrl } from "../src/modules/auth/tokens.ts";
  * reaches production.
  *
  * `SEED_DEMO=true` additionally creates a small sample organisation.
+ *
+ * ── On the shape of this file ────────────────────────────────────────────
+ * Written as several short transactions of bulk statements rather than one
+ * long transaction of single-row upserts. The row count is small (~400) but
+ * the round-trip count is what matters: against a pooled database in another
+ * region, 400 sequential round trips is well over two minutes and blows the
+ * interactive-transaction timeout. The same work as ~25 statements finishes in
+ * seconds. Each step is independently idempotent, so a failure part-way leaves
+ * a re-runnable database rather than a half-seeded one.
  */
 
 const DEMO_DEPARTMENTS = [
@@ -41,45 +50,49 @@ const DEMO_DESIGNATIONS = [
   { title: "Director", code: "DIR", level: 6 },
 ];
 
+const log = (message: string) => console.log(`  ${message}`);
+const step = { timeoutMs: 30_000 };
+
 async function main() {
-  const log = (message: string) => console.log(`  ${message}`);
   console.log("\nSeeding HRMS\n");
 
   const inviteLinks: { label: string; email: string; url: string }[] = [];
 
-  await withPlatform(
-    async (db) => {
-      // ── 1. permission catalog (global, not tenant-scoped)
-      for (const permission of PERMISSIONS) {
-        await db.permission.upsert({
-          where: { code: permission.code },
-          create: {
-            code: permission.code,
-            module: permission.module,
-            action: permission.action,
-          },
-          update: { module: permission.module, action: permission.action },
-        });
-      }
-      log(`permissions: ${PERMISSIONS.length}`);
+  // ── 1. permission catalog (global, not tenant-scoped)
+  await withPlatform(async (db) => {
+    await db.permission.createMany({
+      data: PERMISSIONS.map((p) => ({ code: p.code, module: p.module, action: p.action })),
+      skipDuplicates: true,
+    });
+  }, step);
+  log(`permissions: ${PERMISSIONS.length}`);
 
-      // ── 2. global settings defaults
-      const globalKeys = SETTING_KEYS.filter((k) => SETTINGS_CATALOG[k].scope === "global");
-      for (const key of globalKeys) {
-        const existing = await db.systemSetting.findFirst({
-          where: { key, companyId: null },
-          select: { id: true },
-        });
-        if (!existing) {
-          await db.systemSetting.create({
-            data: { companyId: null, key, value: SETTINGS_CATALOG[key].default as never },
-          });
-        }
-      }
-      log(`global settings: ${globalKeys.length}`);
+  // ── 2. global settings defaults
+  const globalKeys = SETTING_KEYS.filter((k) => SETTINGS_CATALOG[k].scope === "global");
+  await withPlatform(async (db) => {
+    const existing = await db.systemSetting.findMany({
+      where: { companyId: null },
+      select: { key: true },
+    });
+    const have = new Set(existing.map((r) => r.key));
+    const missing = globalKeys.filter((k) => !have.has(k));
 
-      // ── 3. pilot company
-      const company = await db.company.upsert({
+    if (missing.length > 0) {
+      await db.systemSetting.createMany({
+        data: missing.map((key) => ({
+          companyId: null,
+          key,
+          value: SETTINGS_CATALOG[key].default as never,
+        })),
+      });
+    }
+  }, step);
+  log(`global settings: ${globalKeys.length}`);
+
+  // ── 3. pilot company
+  const company = await withPlatform(
+    (db) =>
+      db.company.upsert({
         where: { slug: env.SEED_COMPANY_SLUG },
         create: {
           name: env.SEED_COMPANY_NAME,
@@ -90,150 +103,172 @@ async function main() {
         },
         update: { name: env.SEED_COMPANY_NAME },
         select: { id: true, name: true, slug: true },
+      }),
+    step,
+  );
+  log(`company: ${company.name} (${company.slug})`);
+
+  // ── 4. company settings defaults
+  const companyKeys = SETTING_KEYS.filter((k) => SETTINGS_CATALOG[k].scope === "company");
+  await withPlatform(async (db) => {
+    const existing = await db.systemSetting.findMany({
+      where: { companyId: company.id },
+      select: { key: true },
+    });
+    const have = new Set(existing.map((r) => r.key));
+    const missing = companyKeys.filter((k) => !have.has(k));
+
+    if (missing.length > 0) {
+      await db.systemSetting.createMany({
+        data: missing.map((key) => ({
+          companyId: company.id,
+          key,
+          value: SETTINGS_CATALOG[key].default as never,
+        })),
       });
-      log(`company: ${company.name} (${company.slug})`);
+    }
+  }, step);
+  log(`company settings: ${companyKeys.length}`);
 
-      // ── 4. company settings defaults
-      const companyKeys = SETTING_KEYS.filter((k) => SETTINGS_CATALOG[k].scope === "company");
-      for (const key of companyKeys) {
-        await db.systemSetting.upsert({
-          where: { companyId_key: { companyId: company.id, key } },
-          create: {
-            companyId: company.id,
-            key,
-            value: SETTINGS_CATALOG[key].default as never,
-          },
-          update: {},
-        });
-      }
-      log(`company settings: ${companyKeys.length}`);
-
-      // ── 5. system roles and their grants
-      const permissionIds = new Map(
+  // ── 5. system roles and their grants
+  const permissionIds = await withPlatform(
+    async (db) =>
+      new Map(
         (await db.permission.findMany({ select: { id: true, code: true } })).map((p) => [
           p.code,
           p.id,
         ]),
-      );
+      ),
+    step,
+  );
 
-      for (const roleName of SYSTEM_ROLES) {
-        const role = await db.role.upsert({
-          where: { companyId_name: { companyId: company.id, name: roleName } },
-          create: {
-            companyId: company.id,
-            name: roleName,
-            description: ROLE_DESCRIPTIONS[roleName],
-            isSystem: true,
-          },
-          update: { description: ROLE_DESCRIPTIONS[roleName], isSystem: true },
-          select: { id: true },
-        });
+  for (const roleName of SYSTEM_ROLES) {
+    const wanted = ROLE_PERMISSIONS[roleName];
 
-        const wanted = new Set(ROLE_PERMISSIONS[roleName]);
+    await withPlatform(async (db) => {
+      const role = await db.role.upsert({
+        where: { companyId_name: { companyId: company.id, name: roleName } },
+        create: {
+          companyId: company.id,
+          name: roleName,
+          description: ROLE_DESCRIPTIONS[roleName],
+          isSystem: true,
+        },
+        update: { description: ROLE_DESCRIPTIONS[roleName], isSystem: true },
+        select: { id: true },
+      });
 
-        // Replace the grant set rather than adding to it, so removing a
-        // permission from the matrix actually revokes it on the next seed.
-        await db.rolePermission.deleteMany({
-          where: {
-            roleId: role.id,
-            permission: { code: { notIn: [...wanted] } },
-          },
-        });
+      // Replace the grant set rather than adding to it, so removing a
+      // permission from the matrix actually revokes it on the next seed.
+      await db.rolePermission.deleteMany({
+        where: { roleId: role.id, permission: { code: { notIn: [...wanted] } } },
+      });
 
-        for (const code of wanted) {
-          const permissionId = permissionIds.get(code);
-          if (!permissionId) throw new Error(`Permission missing from catalog: ${code}`);
-          await db.rolePermission.upsert({
-            where: { roleId_permissionId: { roleId: role.id, permissionId } },
-            create: { roleId: role.id, permissionId },
-            update: {},
-          });
-        }
-        log(`role ${roleName}: ${wanted.size} permissions`);
-      }
+      const data = wanted.map((code) => {
+        const permissionId = permissionIds.get(code);
+        if (!permissionId) throw new Error(`Permission missing from catalog: ${code}`);
+        return { roleId: role.id, permissionId };
+      });
 
-      const roleIds = new Map(
+      await db.rolePermission.createMany({ data, skipDuplicates: true });
+    }, step);
+
+    log(`role ${roleName}: ${wanted.length} permissions`);
+  }
+
+  // ── 6. baseline org so an employee can be created on day one
+  const org = await withPlatform(async (db) => {
+    const location = await db.location.upsert({
+      where: { companyId_code: { companyId: company.id, code: "HQ" } },
+      create: { companyId: company.id, name: "Head Office", code: "HQ" },
+      update: {},
+      select: { id: true },
+    });
+    const department = await db.department.upsert({
+      where: { companyId_code: { companyId: company.id, code: "ADMIN" } },
+      create: { companyId: company.id, name: "Administration", code: "ADMIN" },
+      update: {},
+      select: { id: true },
+    });
+    const designation = await db.designation.upsert({
+      where: { companyId_code: { companyId: company.id, code: "ADMIN" } },
+      create: { companyId: company.id, title: "Administrator", code: "ADMIN", level: 9 },
+      update: {},
+      select: { id: true },
+    });
+    return { location, department, designation };
+  }, step);
+  log("org: Head Office / Administration / Administrator");
+
+  // ── 7. administrator accounts, invited (never seeded with a password)
+  const roleIds = await withPlatform(
+    async (db) =>
+      new Map(
         (
           await db.role.findMany({
             where: { companyId: company.id },
             select: { id: true, name: true },
           })
         ).map((r) => [r.name, r.id]),
-      );
+      ),
+    step,
+  );
 
-      // ── 6. baseline org so an employee can be created on day one
-      const location = await db.location.upsert({
-        where: { companyId_code: { companyId: company.id, code: "HQ" } },
-        create: { companyId: company.id, name: "Head Office", code: "HQ" },
+  async function inviteAdmin(email: string, roleName: "super_admin" | "hr_admin") {
+    const normalised = email.toLowerCase();
+
+    return withPlatform(async (db) => {
+      const user = await db.user.upsert({
+        where: { companyId_email: { companyId: company.id, email: normalised } },
+        create: { companyId: company.id, email: normalised, status: "invited" },
         update: {},
-        select: { id: true },
+        select: { id: true, passwordHash: true },
       });
 
-      const adminDepartment = await db.department.upsert({
-        where: { companyId_code: { companyId: company.id, code: "ADMIN" } },
-        create: { companyId: company.id, name: "Administration", code: "ADMIN" },
+      const roleId = roleIds.get(roleName);
+      if (!roleId) throw new Error(`Role missing: ${roleName}`);
+      await db.userRole.upsert({
+        where: { userId_roleId: { userId: user.id, roleId } },
+        create: { userId: user.id, roleId },
         update: {},
-        select: { id: true },
       });
 
-      const adminDesignation = await db.designation.upsert({
-        where: { companyId_code: { companyId: company.id, code: "ADMIN" } },
-        create: { companyId: company.id, title: "Administrator", code: "ADMIN", level: 9 },
-        update: {},
-        select: { id: true },
-      });
-      log("org: Head Office / Administration / Administrator");
-
-      // ── 7. administrator accounts, invited (never seeded with a password)
-      async function inviteAdmin(email: string, roleName: "super_admin" | "hr_admin") {
-        const normalised = email.toLowerCase();
-        const user = await db.user.upsert({
-          where: { companyId_email: { companyId: company.id, email: normalised } },
-          create: { companyId: company.id, email: normalised, status: "invited" },
-          update: {},
-          select: { id: true, status: true, passwordHash: true },
+      // Only issue a fresh invite if the account has never been claimed.
+      // Re-seeding must not hand out a new link to a live account.
+      if (user.passwordHash === null) {
+        await db.passwordResetToken.updateMany({
+          where: { userId: user.id, usedAt: null },
+          data: { usedAt: new Date() },
         });
-
-        const roleId = roleIds.get(roleName);
-        if (!roleId) throw new Error(`Role missing: ${roleName}`);
-        await db.userRole.upsert({
-          where: { userId_roleId: { userId: user.id, roleId } },
-          create: { userId: user.id, roleId },
-          update: {},
+        const token = issueToken("invite");
+        await db.passwordResetToken.create({
+          data: {
+            userId: user.id,
+            tokenHash: token.hash,
+            kind: "invite",
+            expiresAt: token.expiresAt,
+          },
         });
-
-        // Only issue a fresh invite if the account has never been claimed.
-        // Re-seeding must not hand out a new link to a live account.
-        if (user.passwordHash === null) {
-          await db.passwordResetToken.updateMany({
-            where: { userId: user.id, usedAt: null },
-            data: { usedAt: new Date() },
-          });
-          const token = issueToken("invite");
-          await db.passwordResetToken.create({
-            data: {
-              userId: user.id,
-              tokenHash: token.hash,
-              kind: "invite",
-              expiresAt: token.expiresAt,
-            },
-          });
-          inviteLinks.push({
-            label: roleName,
-            email: normalised,
-            url: buildInviteUrl(env.APP_URL, token.raw),
-          });
-        } else {
-          log(`${roleName} ${normalised} already active — invite not reissued`);
-        }
-        return user.id;
+        inviteLinks.push({
+          label: roleName,
+          email: normalised,
+          url: buildInviteUrl(env.APP_URL, token.raw),
+        });
+      } else {
+        log(`${roleName} ${normalised} already active — invite not reissued`);
       }
 
-      const superAdminId = await inviteAdmin(env.SEED_ADMIN_EMAIL, "super_admin");
-      const hrAdminId = await inviteAdmin(env.SEED_HR_EMAIL, "hr_admin");
+      return user.id;
+    }, step);
+  }
 
-      // Give the HR admin an employee record so self-service works for them.
-      await db.employee.upsert({
+  await inviteAdmin(env.SEED_ADMIN_EMAIL, "super_admin");
+  const hrAdminId = await inviteAdmin(env.SEED_HR_EMAIL, "hr_admin");
+
+  // Give the HR admin an employee record so self-service works for them.
+  await withPlatform(
+    (db) =>
+      db.employee.upsert({
         where: { companyId_employeeCode: { companyId: company.id, employeeCode: "EMP0001" } },
         create: {
           companyId: company.id,
@@ -242,39 +277,48 @@ async function main() {
           firstName: "HR",
           lastName: "Admin",
           workEmail: env.SEED_HR_EMAIL.toLowerCase(),
-          departmentId: adminDepartment.id,
-          designationId: adminDesignation.id,
-          locationId: location.id,
+          departmentId: org.department.id,
+          designationId: org.designation.id,
+          locationId: org.location.id,
           employmentType: "full_time",
           status: "active",
           joinDate: new Date("2024-01-01T00:00:00.000Z"),
         },
         update: {},
-      });
-      log(`users: ${env.SEED_ADMIN_EMAIL} (super_admin), ${env.SEED_HR_EMAIL} (hr_admin)`);
-      void superAdminId;
-
-      // ── 8. demo organisation
-      if (!env.SEED_DEMO) return;
-
-      for (const dept of DEMO_DEPARTMENTS) {
-        await db.department.upsert({
-          where: { companyId_code: { companyId: company.id, code: dept.code } },
-          create: { companyId: company.id, ...dept },
-          update: {},
-        });
-      }
-      for (const designation of DEMO_DESIGNATIONS) {
-        await db.designation.upsert({
-          where: { companyId_code: { companyId: company.id, code: designation.code } },
-          create: { companyId: company.id, ...designation },
-          update: {},
-        });
-      }
-      log(`demo: ${DEMO_DEPARTMENTS.length} departments, ${DEMO_DESIGNATIONS.length} designations`);
-    },
-    { timeoutMs: 120_000 },
+      }),
+    step,
   );
+  log(`users: ${env.SEED_ADMIN_EMAIL} (super_admin), ${env.SEED_HR_EMAIL} (hr_admin)`);
+
+  // ── 8. demo organisation
+  if (env.SEED_DEMO) {
+    await withPlatform(async (db) => {
+      const existingDepartments = await db.department.findMany({
+        where: { companyId: company.id },
+        select: { code: true },
+      });
+      const haveDepartments = new Set(existingDepartments.map((d) => d.code));
+      const newDepartments = DEMO_DEPARTMENTS.filter((d) => !haveDepartments.has(d.code));
+      if (newDepartments.length > 0) {
+        await db.department.createMany({
+          data: newDepartments.map((d) => ({ companyId: company.id, ...d })),
+        });
+      }
+
+      const existingDesignations = await db.designation.findMany({
+        where: { companyId: company.id },
+        select: { code: true },
+      });
+      const haveDesignations = new Set(existingDesignations.map((d) => d.code));
+      const newDesignations = DEMO_DESIGNATIONS.filter((d) => !haveDesignations.has(d.code));
+      if (newDesignations.length > 0) {
+        await db.designation.createMany({
+          data: newDesignations.map((d) => ({ companyId: company.id, ...d })),
+        });
+      }
+    }, step);
+    log(`demo: ${DEMO_DEPARTMENTS.length} departments, ${DEMO_DESIGNATIONS.length} designations`);
+  }
 
   if (inviteLinks.length > 0) {
     console.log("\nInvite links (valid 7 days, single use):\n");
