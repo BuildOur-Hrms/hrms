@@ -18,6 +18,14 @@ const schema = z.object({
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
 
   REDIS_URL: z.string().optional(),
+  /**
+   * `auto`   — BullMQ when REDIS_URL is set, otherwise inline in development
+   *            and a hard failure in production.
+   * `inline` — run jobs in-process even in production. Required on a
+   *            serverless host with no worker, and an explicit acknowledgement
+   *            that jobs get no retries.
+   */
+  QUEUE_DRIVER: z.enum(["auto", "inline"]).default("auto"),
 
   S3_ENDPOINT: z.string().optional(),
   S3_BUCKET: z.string().optional(),
@@ -42,8 +50,28 @@ const schema = z.object({
     .transform((v) => v === "true"),
 });
 
+/**
+ * Vercel does not know the deployment's own URL until it exists, so APP_URL is
+ * derived when it has not been set explicitly. It matters for two things: the
+ * absolute links in invite and reset emails, and the Origin check on mutating
+ * requests.
+ *
+ * `VERCEL_PROJECT_PRODUCTION_URL` is the stable production domain;
+ * `VERCEL_URL` is the per-deployment one, which is what a preview should use.
+ */
+function resolveAppUrl(): string | undefined {
+  if (process.env["APP_URL"]) return process.env["APP_URL"];
+
+  const host =
+    process.env["VERCEL_ENV"] === "production"
+      ? process.env["VERCEL_PROJECT_PRODUCTION_URL"]
+      : (process.env["VERCEL_URL"] ?? process.env["VERCEL_PROJECT_PRODUCTION_URL"]);
+
+  return host ? `https://${host}` : undefined;
+}
+
 function load() {
-  const parsed = schema.safeParse(process.env);
+  const parsed = schema.safeParse({ ...process.env, APP_URL: resolveAppUrl() });
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
@@ -57,3 +85,9 @@ export const env = load();
 
 export const isProd = env.NODE_ENV === "production";
 export const isTest = env.NODE_ENV === "test";
+
+/**
+ * Running on a serverless platform: no long-lived process, so connection pools
+ * must stay small and background work cannot outlive the response.
+ */
+export const isServerless = !!process.env["VERCEL"];

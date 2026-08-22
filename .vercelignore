@@ -1,0 +1,6 @@
+# Not needed to build or run the app; keeps deployment uploads small.
+docs
+HRMS-Blueprint.pdf
+tests
+docker-compose.yml
+.github

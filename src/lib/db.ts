@@ -2,7 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "@/generated/prisma/client";
 
-import { env, isProd } from "./env";
+import { env, isProd, isServerless } from "./env";
 
 /**
  * Database access. Two independent isolation layers guard tenancy
@@ -22,11 +22,20 @@ import { env, isProd } from "./env";
  * expected to be narrow and audited.
  */
 
+/**
+ * Pool sizing.
+ *
+ * On a serverless host every warm function instance holds its own pool, and
+ * there may be dozens of instances. A generous per-instance pool multiplied by
+ * the instance count is how a Supabase project runs out of connections. Keep
+ * it small and let the platform's pooler do the multiplexing; release idle
+ * connections quickly, since an instance may sit warm and unused for minutes.
+ */
 const adapter = new PrismaPg({
   connectionString: env.DATABASE_URL,
-  max: isProd ? 10 : 5,
+  max: isServerless ? 3 : isProd ? 10 : 5,
   connectionTimeoutMillis: 5_000,
-  idleTimeoutMillis: 30_000,
+  idleTimeoutMillis: isServerless ? 10_000 : 30_000,
 });
 
 const globalForPrisma = globalThis as unknown as { prismaBase?: PrismaClient };

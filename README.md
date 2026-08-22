@@ -87,6 +87,94 @@ password, and sign in.
 
 ---
 
+## Deploying to Vercel
+
+The repo is connected to Vercel and builds with no configuration — Next.js is
+auto-detected and `npm run build` already runs `prisma generate` first. What
+does need attention is the environment, and the fact that a serverless host has
+no worker process.
+
+### 1. Run migrations first
+
+Vercel does **not** run migrations, and it should not: a build that mutates the
+production schema is a build that can half-apply one. Apply them yourself
+before the first deploy, from a machine that has `DIRECT_DATABASE_URL`:
+
+```bash
+npm run db:deploy && npm run db:seed && npm run db:doctor
+```
+
+Deploying against an empty database gives a working build and a 500 on every
+page, which is a confusing way to find this out.
+
+### 2. Environment variables
+
+Set these in **Project → Settings → Environment Variables**, for Production and
+Preview. `DATABASE_URL` and `AUTH_SECRET` are read at _build_ time as well as
+at runtime, so a missing one fails the build rather than the first request —
+which is the intent.
+
+| Variable              | Value                                         |
+| --------------------- | --------------------------------------------- |
+| `DATABASE_URL`        | Supabase transaction pooler, port 6543        |
+| `DIRECT_DATABASE_URL` | Supabase session pooler, port 5432            |
+| `AUTH_SECRET`         | 32+ random bytes, base64                      |
+| `QUEUE_DRIVER`        | `inline` — see below                          |
+| `EMAIL_PROVIDER`      | `resend` (and `RESEND_API_KEY`, `EMAIL_FROM`) |
+| `SEED_DEMO`           | `false`                                       |
+
+`APP_URL` is deliberately **not** in that list. It is derived from Vercel's own
+`VERCEL_PROJECT_PRODUCTION_URL` on production and `VERCEL_URL` on previews, so
+invite links in a preview deployment point at that preview rather than at
+production. Set `APP_URL` explicitly only once there is a custom domain.
+
+### 3. `QUEUE_DRIVER=inline` is required, and it is a trade-off
+
+There is no worker process on Vercel, so BullMQ has nothing to consume a queue.
+`QUEUE_DRIVER=inline` runs jobs inside the request that triggered them:
+
+- Invite and reset emails **are** sent, and the request waits for them.
+- A failed job is logged and lost. There are no retries.
+- Scheduled work (the M2/M3 cron set: attendance calculation, leave accrual)
+  cannot run at all this way.
+
+That is fine for M0–M1, where the only job is transactional email. Before
+attendance and leave land, either point `REDIS_URL` at a managed Redis and run
+the worker somewhere with a real process, or move the cron jobs to Vercel Cron
+hitting authenticated endpoints. The app refuses to fall into inline mode in
+production silently — without `QUEUE_DRIVER=inline` set, enqueueing throws and
+`/api/health?ready=1` reports the queue as unavailable.
+
+### 4. Region
+
+Put the functions in the same region as the Supabase project
+(**Settings → Functions → Function Region**). Every request opens a transaction
+and does several round trips inside it; a cross-continent hop turns a 40 ms page
+into a 400 ms one.
+
+### 5. Check it
+
+```
+GET https://<deployment>/api/health           liveness
+GET https://<deployment>/api/health?ready=1   database + queue readiness
+```
+
+Readiness returns 503 with a per-dependency breakdown when something is wrong,
+which is what an uptime monitor should watch.
+
+### Serverless adjustments already made
+
+- **Connection pool** capped at 3 per instance with a 10s idle timeout. Each
+  warm function instance holds its own pool; the default of 10 multiplied by
+  the instance count is how a Supabase project runs out of connections.
+- **Jobs are awaited** rather than detached. A serverless function is frozen the
+  moment it returns a response, so a fire-and-forget promise never completes.
+- **argon2 native binaries** are pinned into the function bundle via
+  `outputFileTracingIncludes`. The platform-specific binary is selected by a
+  runtime `require` that static tracing does not reliably follow.
+
+---
+
 ## Commands
 
 | Command              | What it does                                        |

@@ -1,4 +1,4 @@
-import { env } from "./env";
+import { env, isServerless } from "./env";
 import { logger } from "./logger";
 
 /**
@@ -6,9 +6,10 @@ import { logger } from "./logger";
  *
  * With `REDIS_URL` set, jobs go to BullMQ and are executed by the worker
  * process with retries and backoff. Without it, the fallback driver runs the
- * handler inline (after the response, best-effort, no retries) so a developer
- * can exercise the whole flow with only Postgres running. The fallback refuses
- * to start in production.
+ * handler in-process, so the whole flow can be exercised with only Postgres
+ * running — and so a serverless deployment with no worker can still send an
+ * invite email. In production the fallback has to be requested explicitly with
+ * `QUEUE_DRIVER=inline`; it is never fallen into by accident.
  */
 
 export interface JobPayloads {
@@ -71,13 +72,19 @@ const inlineDriver: QueueDriver = {
       logger.error({ job: name }, "no handler registered for job (inline driver)");
       return;
     }
-    // Detached on purpose: a failed background job must never fail the request
-    // that triggered it.
-    void handler(payload, { ...(options.requestId ? { requestId: options.requestId } : {}) }).catch(
-      (error: unknown) => {
-        logger.error({ err: error, job: name, requestId: options.requestId }, "inline job failed");
-      },
-    );
+
+    const context = { ...(options.requestId ? { requestId: options.requestId } : {}) };
+
+    const run = handler(payload, context).catch((error: unknown) => {
+      // A failed background job must never fail the request that triggered it.
+      logger.error({ err: error, job: name, requestId: options.requestId }, "inline job failed");
+    });
+
+    // On a serverless host the process is frozen the moment the response is
+    // returned, so a detached promise is simply never finished — the invite
+    // email would silently not be sent. Pay the latency and await it.
+    if (isServerless) await run;
+    else void run;
   },
   async depth() {
     return 0;
@@ -135,11 +142,30 @@ async function getBullDriver(): Promise<QueueDriver> {
   return bullDriverPromise;
 }
 
+let warnedAboutInlineInProd = false;
+
 async function driver(): Promise<QueueDriver> {
   if (env.REDIS_URL) return getBullDriver();
+
   if (env.NODE_ENV === "production") {
-    throw new Error("REDIS_URL is required in production — the inline queue driver has no retries");
+    // Refusing outright would make every invite and password reset a 500 on a
+    // host with no worker process. Running without retries is a real
+    // trade-off, so it has to be asked for by name rather than fallen into.
+    if (env.QUEUE_DRIVER !== "inline") {
+      throw new Error(
+        "No REDIS_URL in production. Set one, or set QUEUE_DRIVER=inline to " +
+          "accept in-process jobs with no retries.",
+      );
+    }
+    if (!warnedAboutInlineInProd) {
+      warnedAboutInlineInProd = true;
+      logger.warn(
+        "QUEUE_DRIVER=inline in production: jobs run in the request and are lost if they fail. " +
+          "Move to Redis before this carries real payroll or document work.",
+      );
+    }
   }
+
   return inlineDriver;
 }
 

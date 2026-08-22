@@ -18,6 +18,19 @@ const nextConfig: NextConfig = {
     "pino-pretty",
   ],
 
+  /**
+   * `@node-rs/argon2` picks its native binary at runtime with a platform
+   * switch over `require("@node-rs/argon2-linux-x64-gnu")` and friends. Static
+   * tracing does not always follow that, and the failure mode on a serverless
+   * host is a 500 on every login rather than a build error. Include the
+   * binaries explicitly for the routes that hash or verify a password.
+   */
+  outputFileTracingIncludes: {
+    "/api/v1/auth/**": ["./node_modules/@node-rs/argon2-*/**"],
+    "/api/v1/employees/**": ["./node_modules/@node-rs/argon2-*/**"],
+    "/api/v1/users/**": ["./node_modules/@node-rs/argon2-*/**"],
+  },
+
   /** Never leak stack traces or framework internals in a response header. */
   poweredByHeader: false,
 
