@@ -103,15 +103,43 @@ async function main() {
     console.log(`  verified ${ROLE} holds neither SUPERUSER nor BYPASSRLS`);
 
     const owner = new URL(ownerUrl);
-    const appUrl = new URL(ownerUrl);
-    appUrl.username = ROLE;
-    appUrl.password = password;
 
-    console.log(`\nPoint DATABASE_URL at this role:\n`);
-    console.log(`  DATABASE_URL=${appUrl.toString()}\n`);
-    console.log(`Leave DIRECT_DATABASE_URL as the owner (${owner.username}) for migrations.`);
-    console.log(`On Supabase's pooler the username becomes "${ROLE}.<project-ref>".\n`);
-    console.log(`Then: npm run db:doctor\n`);
+    /**
+     * Supabase routes through Supavisor, which reads the tenant from the
+     * username: it is `postgres.<project-ref>`, not `postgres`. A custom role
+     * has to follow the same convention, or the pooler cannot tell which
+     * project the connection belongs to and refuses it.
+     */
+    const isPooler = owner.hostname.includes("pooler.supabase.com");
+    const projectRef = owner.username.includes(".")
+      ? owner.username.slice(owner.username.indexOf(".") + 1)
+      : null;
+    const appUsername = isPooler && projectRef ? `${ROLE}.${projectRef}` : ROLE;
+
+    const build = (port: string) => {
+      const url = new URL(ownerUrl);
+      url.username = appUsername;
+      url.password = password;
+      url.port = port;
+      return url.toString();
+    };
+
+    console.log(`\nApplication role: ${appUsername}\n`);
+
+    if (isPooler) {
+      // 6543 is transaction mode, which is what the app wants: every query it
+      // issues is already inside a transaction.
+      console.log(`Vercel — DATABASE_URL (transaction pooler):\n`);
+      console.log(`  ${build("6543")}\n`);
+      console.log(`GitHub secret — SUPABASE_APP_DB_URL (session pooler, so the`);
+      console.log(`doctor verifies the app's role rather than the owner's):\n`);
+      console.log(`  ${build("5432")}\n`);
+    } else {
+      console.log(`  DATABASE_URL=${build(owner.port || "5432")}\n`);
+    }
+
+    console.log(`Leave SUPABASE_DB_URL as the owner (${owner.username}) — migrations need DDL.`);
+    console.log(`Then re-run this workflow with "doctor" to confirm RLS is enforced.\n`);
   } finally {
     await client.end();
   }
