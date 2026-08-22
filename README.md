@@ -19,7 +19,7 @@ Attendance, leave and holidays are M2–M3 and not built yet.
 | UI        | Tailwind v4 + shadcn/ui (Base UI), lucide-react                 |
 | Data      | TanStack Query + Table, react-hook-form + zod                   |
 | API       | REST route handlers under `/api/v1`                             |
-| Database  | PostgreSQL 16 + Prisma 7 (`@prisma/adapter-pg`)                 |
+| Database  | PostgreSQL (Supabase) + Prisma 7 (`@prisma/adapter-pg`)         |
 | Auth      | Auth.js v5 JWE session cookie, argon2id passwords               |
 | AuthZ     | Permission RBAC + tenant-scoped Prisma extension + Postgres RLS |
 | Jobs      | BullMQ + Redis (inline fallback driver in development)          |
@@ -42,9 +42,17 @@ Generate a secret with:
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-On a pooled provider (Neon, Supabase) `DATABASE_URL` is the pooled endpoint and
-`DIRECT_DATABASE_URL` is the direct one. Migrations need the direct connection;
-the app uses the pooled one.
+**Supabase connection strings** (dashboard → Connect). Both are needed, and
+they differ only by port:
+
+| Variable              | Supavisor mode | Port | Why                                                                |
+| --------------------- | -------------- | ---- | ------------------------------------------------------------------ |
+| `DATABASE_URL`        | transaction    | 6543 | App runtime. Every query we issue is inside a transaction already. |
+| `DIRECT_DATABASE_URL` | session        | 5432 | `prisma migrate` needs advisory locks and session state.           |
+
+The direct endpoint (`db.<ref>.supabase.co:5432`) works too, but it is IPv6-only
+without the IPv4 add-on, which breaks migrations from most laptops and from
+GitHub Actions runners. Session mode is IPv4 and sidesteps that.
 
 ### 2. Or run everything locally with Docker
 
@@ -57,10 +65,10 @@ Brings up Postgres, Redis, MinIO and Mailpit. Then point `DATABASE_URL` and
 `REDIS_URL=redis://localhost:6379`, and `EMAIL_PROVIDER=smtp` with
 `SMTP_URL=smtp://localhost:1025`. Mailpit's inbox is at http://localhost:8025.
 
-### 3. Migrate and seed
+### 3. Migrate, seed, verify
 
 ```bash
-npm run db:deploy && npm run db:seed
+npm run db:deploy && npm run db:seed && npm run db:doctor
 ```
 
 The seed is idempotent. It writes the permission catalog, the pilot company,
@@ -93,6 +101,7 @@ password, and sign in.
 | `npm run db:deploy`  | Apply pending migrations (CI, staging, production)  |
 | `npm run db:seed`    | Idempotent seed                                     |
 | `npm run db:studio`  | Prisma Studio                                       |
+| `npm run db:doctor`  | Assert RLS, isolation and audit immutability hold   |
 
 ---
 
@@ -167,6 +176,14 @@ Each of these was a forced choice, not a preference:
    exempt from RLS unless the table forces it. Every tenant table is `FORCE`d,
    which subjects the owner to the same policies. When a separate role is
    available, grant it — `FORCE` stays correct either way.
+
+   **`FORCE` is not sufficient on its own.** A role holding the `BYPASSRLS`
+   attribute ignores policies even on a forced table, and managed providers
+   sometimes grant it to the role they give you. `npm run db:doctor` checks
+   for exactly this and says so loudly. If it warns, create a dedicated role
+   without `BYPASSRLS` and point `DATABASE_URL` at it before the system holds
+   real employee data — until then the app-layer extension is the only thing
+   enforcing tenancy.
 
 3. **`audit_logs` immutability by trigger instead of by grant.**
    Same reason: with one owner role, a grant can be re-granted. A trigger
