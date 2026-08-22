@@ -56,6 +56,63 @@ function assert(condition: boolean, pass: string, failMessage: string) {
 }
 
 /**
+ * Turn the two connection failures that actually happen with Supabase into
+ * something that names the fix, instead of a raw socket error.
+ */
+function explainConnectionFailure(error: unknown, url: string): Error {
+  const code = (error as { code?: string }).code;
+  const address = (error as { address?: string }).address ?? "";
+  const host = (() => {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return "";
+    }
+  })();
+
+  // An IPv6 literal means DNS resolved to Supabase's direct endpoint, which
+  // has no IPv4 address unless the project buys the add-on. CI runners and
+  // most home connections cannot reach it at all.
+  if (code === "ENETUNREACH" && address.includes(":")) {
+    return new Error(
+      `Cannot reach ${host} over IPv6 (${address}).
+
+` +
+        `This looks like Supabase's DIRECT endpoint, which is IPv6-only without
+` +
+        `the IPv4 add-on — GitHub Actions runners have no IPv6, so it can never
+` +
+        `work from CI.
+
+` +
+        `Use the SESSION POOLER instead. In the Supabase dashboard: Connect →
+` +
+        `Session pooler. The host becomes  aws-<n>-<region>.pooler.supabase.com
+` +
+        `on port 5432, and the username gains the project ref:
+
+` +
+        `  postgresql://postgres.<project-ref>:<password>@aws-<n>-<region>.pooler.supabase.com:5432/postgres`,
+    );
+  }
+
+  if (code === "ENOTFOUND") {
+    return new Error(`Host ${host} does not resolve. Check the connection string.`);
+  }
+
+  if (code === "28P01") {
+    return new Error(
+      `Password rejected for ${host}.
+` +
+        `On the pooler the username must include the project ref ` +
+        `("postgres.<project-ref>", not "postgres").`,
+    );
+  }
+
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+/**
  * A login role that policies actually constrain. Preferred over guessing at a
  * name: whatever it is called, what matters is that it is neither a superuser
  * nor holds BYPASSRLS.
@@ -101,7 +158,11 @@ async function main() {
   if (!url) throw new Error("Set DATABASE_URL first");
 
   const client = new Client({ connectionString: url });
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (error) {
+    throw explainConnectionFailure(error, url);
+  }
 
   try {
     // ── 1. who and where
