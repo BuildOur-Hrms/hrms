@@ -3,11 +3,12 @@ import { Users } from "lucide-react";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import { NoAccess } from "@/components/shared/no-access";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmployeeStatusBadge, employmentTypeLabel } from "@/components/shared/status-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { requirePagePermission, requireSession, withPageData } from "@/lib/page";
+import { pageCan, requireSession, withPageData } from "@/lib/page";
 import { fullName, initials, toDateOnly } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "My team" };
@@ -21,7 +22,8 @@ export const metadata: Metadata = { title: "My team" };
  */
 export default async function TeamPage() {
   const session = await requireSession();
-  requirePagePermission(session, "employee.view_team");
+  if (!pageCan(session, "employee.view_team"))
+    return <NoAccess required="employee.view_team" what="team data" />;
 
   const reports = session.employeeId
     ? await withPageData(session, (db) =>

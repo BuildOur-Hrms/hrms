@@ -115,7 +115,7 @@ export function Topbar({
             ) : null}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem render={<Link href="/me/profile" />}>
+          <DropdownMenuItem nativeButton={false} render={<Link href="/me/profile" />}>
             <UserCircle className="size-4" />
             My profile
           </DropdownMenuItem>

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { DetailCardSkeleton } from "@/components/shared/skeletons";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,12 +81,7 @@ export function CompanyForm({ canManage }: { canManage: boolean }) {
   }
 
   if (isLoading || !data) {
-    return (
-      <div className="text-muted-foreground flex items-center justify-center gap-2 rounded-lg border py-16 text-sm">
-        <Loader2 className="size-4 animate-spin" />
-        Loading
-      </div>
-    );
+    return <DetailCardSkeleton fields={6} />;
   }
 
   return (

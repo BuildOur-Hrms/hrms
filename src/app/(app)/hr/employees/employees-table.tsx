@@ -1,10 +1,11 @@
 "use client";
 
-import { Loader2, Search, UserPlus, Users } from "lucide-react";
+import { Search, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { TableSkeleton } from "@/components/shared/skeletons";
 import { EmptyState } from "@/components/shared/empty-state";
 import { EmployeeStatusBadge, employmentTypeLabel } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,18 @@ const ALL = "__all__";
 
 /** The status filter is either a real status or the "no filter" sentinel. */
 type StatusFilter = NonNullable<ListEmployeesInput["status"]> | typeof ALL;
+
+/**
+ * Base UI resolves a select's trigger label from this map. Without it the
+ * trigger renders the raw value — "__all__", or a bare UUID for a department.
+ */
+const STATUS_ITEMS: Record<string, string> = {
+  [ALL]: "All statuses",
+  onboarding: "Onboarding",
+  active: "Active",
+  on_notice: "On notice",
+  exited: "Exited",
+};
 
 export function EmployeesTable({ canCreate }: { canCreate: boolean }) {
   const router = useRouter();
@@ -69,6 +82,14 @@ export function EmployeesTable({ canCreate }: { canCreate: boolean }) {
   const { data, isLoading, isFetching, error } = useEmployees(params);
   const { data: orgOptions } = useOrgOptions();
 
+  const departmentItems = useMemo(
+    () => ({
+      [ALL]: "All departments",
+      ...Object.fromEntries((orgOptions?.departments ?? []).map((d) => [d.id, d.name])),
+    }),
+    [orgOptions],
+  );
+
   const rows = data?.data ?? [];
   const total = data?.meta.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / 20));
@@ -94,6 +115,7 @@ export function EmployeesTable({ canCreate }: { canCreate: boolean }) {
         </div>
 
         <Select
+          items={STATUS_ITEMS}
           value={status}
           onValueChange={(value) => {
             setStatus((value ?? ALL) as StatusFilter);
@@ -113,6 +135,7 @@ export function EmployeesTable({ canCreate }: { canCreate: boolean }) {
         </Select>
 
         <Select
+          items={departmentItems}
           value={departmentId}
           onValueChange={(value) => {
             setDepartmentId(value ?? ALL);
@@ -147,10 +170,7 @@ export function EmployeesTable({ canCreate }: { canCreate: boolean }) {
           description={error instanceof Error ? error.message : "Try refreshing the page."}
         />
       ) : isLoading ? (
-        <div className="text-muted-foreground flex items-center justify-center gap-2 rounded-lg border py-16 text-sm">
-          <Loader2 className="size-4 animate-spin" />
-          Loading employees
-        </div>
+        <TableSkeleton rows={8} columns={6} />
       ) : rows.length === 0 ? (
         <EmptyState
           icon={Users}

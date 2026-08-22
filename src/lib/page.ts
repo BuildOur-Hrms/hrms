@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 
 import { authenticate } from "./context";
 import { withTenant } from "./db";
-import { ForbiddenError } from "./errors";
 import type { PermissionCode } from "./permissions";
 import { SESSION_COOKIE_NAME, readSessionToken } from "./session";
 
@@ -94,13 +93,15 @@ export async function withPageData<T>(
   return withTenant(session.companyId, fn);
 }
 
-/** Server-side permission gate for a whole page. */
-export function requirePagePermission(session: PageSession, code: PermissionCode): void {
-  if (!session.permissions.has(code)) {
-    throw new ForbiddenError(`Missing permission: ${code}`);
-  }
-}
-
+/**
+ * Server-side permission check for a page.
+ *
+ * There is deliberately no `requirePagePermission` that throws. In production
+ * React strips the message from a server-component error and gives the
+ * boundary only a digest, so a thrown ForbiddenError is indistinguishable from
+ * a crash — the user sees "something went wrong" for an entirely ordinary
+ * situation. Pages branch on this and render `<NoAccess />` instead.
+ */
 export function pageCan(session: PageSession, code: PermissionCode): boolean {
   return session.permissions.has(code);
 }

@@ -1,10 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { DetailCardSkeleton } from "@/components/shared/skeletons";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,12 +54,7 @@ export function SettingsView() {
   });
 
   if (isLoading) {
-    return (
-      <div className="text-muted-foreground flex items-center justify-center gap-2 rounded-lg border py-16 text-sm">
-        <Loader2 className="size-4 animate-spin" />
-        Loading settings
-      </div>
-    );
+    return <DetailCardSkeleton fields={6} />;
   }
 
   if (error || !data) {

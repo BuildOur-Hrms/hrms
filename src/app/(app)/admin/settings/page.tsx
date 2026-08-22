@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
+import { NoAccess } from "@/components/shared/no-access";
 import { PageHeader } from "@/components/shared/page-header";
-import { requirePagePermission, requireSession } from "@/lib/page";
+import { pageCan, requireSession } from "@/lib/page";
 
 import { SettingsView } from "./settings-view";
 
@@ -9,7 +10,8 @@ export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const session = await requireSession();
-  requirePagePermission(session, "settings.manage");
+  if (!pageCan(session, "settings.manage"))
+    return <NoAccess required="settings.manage" what="settings" />;
 
   return (
     <>

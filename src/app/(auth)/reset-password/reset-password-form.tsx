@@ -2,12 +2,12 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Loader2 } from "lucide-react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ButtonLink } from "@/components/shared/button-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -53,9 +53,9 @@ export function ResetPasswordForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline" className="w-full" render={<Link href="/forgot-password" />}>
+          <ButtonLink href="/forgot-password" variant="outline" className="w-full">
             Request a new link
-          </Button>
+          </ButtonLink>
         </CardContent>
       </Card>
     );
@@ -76,9 +76,9 @@ export function ResetPasswordForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button className="w-full" render={<Link href="/login" />}>
+          <ButtonLink href="/login" className="w-full">
             Go to sign in
-          </Button>
+          </ButtonLink>
         </CardContent>
       </Card>
     );

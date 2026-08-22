@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Building2, CalendarDays, UserCheck, Users } from "lucide-react";
-import Link from "next/link";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/shared/button-link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { pageCan, requireSession, withPageData } from "@/lib/page";
 
@@ -82,9 +81,9 @@ export default async function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline" render={<Link href="/me/profile" />}>
+            <ButtonLink href="/me/profile" variant="outline">
               Open my profile
-            </Button>
+            </ButtonLink>
           </CardContent>
         </Card>
 
@@ -97,7 +96,7 @@ export default async function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button render={<Link href="/hr/employees?new=1" />}>Add employee</Button>
+              <ButtonLink href="/hr/employees?new=1">Add employee</ButtonLink>
             </CardContent>
           </Card>
         ) : null}

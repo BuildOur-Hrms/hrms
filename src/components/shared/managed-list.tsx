@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { TableSkeleton } from "@/components/shared/skeletons";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import {
@@ -138,10 +139,7 @@ export function ManagedList<T extends { id: string }>({
           description={error instanceof Error ? error.message : undefined}
         />
       ) : isLoading ? (
-        <div className="text-muted-foreground flex items-center justify-center gap-2 rounded-lg border py-12 text-sm">
-          <Loader2 className="size-4 animate-spin" />
-          Loading
-        </div>
+        <TableSkeleton rows={5} columns={4} />
       ) : rows.length === 0 ? (
         <EmptyState
           {...(emptyIcon ? { icon: emptyIcon } : {})}

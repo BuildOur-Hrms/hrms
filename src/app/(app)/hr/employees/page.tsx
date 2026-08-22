@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { NoAccess } from "@/components/shared/no-access";
 import { PageHeader } from "@/components/shared/page-header";
-import { pageCan, requirePagePermission, requireSession } from "@/lib/page";
+import { pageCan, requireSession } from "@/lib/page";
 
 import { EmployeesTable } from "./employees-table";
 
@@ -10,7 +11,8 @@ export const metadata: Metadata = { title: "Employees" };
 
 export default async function EmployeesPage() {
   const session = await requireSession();
-  requirePagePermission(session, "employee.view_all");
+  if (!pageCan(session, "employee.view_all"))
+    return <NoAccess required="employee.view_all" what="the employee directory" />;
 
   return (
     <>

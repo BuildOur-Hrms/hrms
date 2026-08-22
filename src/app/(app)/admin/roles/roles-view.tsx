@@ -1,8 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
+import { DetailCardSkeleton } from "@/components/shared/skeletons";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,12 +32,7 @@ export function RolesView() {
   });
 
   if (isLoading) {
-    return (
-      <div className="text-muted-foreground flex items-center justify-center gap-2 rounded-lg border py-16 text-sm">
-        <Loader2 className="size-4 animate-spin" />
-        Loading roles
-      </div>
-    );
+    return <DetailCardSkeleton fields={4} />;
   }
 
   if (error || !data) {

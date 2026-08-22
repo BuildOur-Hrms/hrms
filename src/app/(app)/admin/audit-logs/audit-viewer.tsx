@@ -1,9 +1,10 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { FileClock, Loader2 } from "lucide-react";
+import { FileClock } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 
+import { TableSkeleton } from "@/components/shared/skeletons";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,18 @@ interface AuditRow {
 }
 
 const ALL = "__all__";
+
+/** Base UI reads the trigger's label from here; without it the raw value shows. */
+const ENTITY_ITEMS: Record<string, string> = {
+  [ALL]: "All entities",
+  user: "user",
+  employee: "employee",
+  department: "department",
+  designation: "designation",
+  location: "location",
+  company: "company",
+  system_setting: "system setting",
+};
 
 const ENTITY_TYPES = [
   "user",
@@ -91,6 +104,7 @@ export function AuditViewer() {
         <div className="grid gap-1.5">
           <Label htmlFor="entityType">Entity</Label>
           <Select
+            items={ENTITY_ITEMS}
             value={entityType}
             onValueChange={(value) => {
               setEntityType(value ?? ALL);
@@ -158,10 +172,7 @@ export function AuditViewer() {
           description={error instanceof Error ? error.message : undefined}
         />
       ) : isLoading ? (
-        <div className="text-muted-foreground flex items-center justify-center gap-2 rounded-lg border py-16 text-sm">
-          <Loader2 className="size-4 animate-spin" />
-          Loading
-        </div>
+        <TableSkeleton rows={10} columns={5} />
       ) : rows.length === 0 ? (
         <EmptyState
           icon={FileClock}

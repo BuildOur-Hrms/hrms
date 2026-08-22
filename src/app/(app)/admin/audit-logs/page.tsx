@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
+import { NoAccess } from "@/components/shared/no-access";
 import { PageHeader } from "@/components/shared/page-header";
-import { requirePagePermission, requireSession } from "@/lib/page";
+import { pageCan, requireSession } from "@/lib/page";
 
 import { AuditViewer } from "./audit-viewer";
 
@@ -9,7 +10,8 @@ export const metadata: Metadata = { title: "Audit log" };
 
 export default async function AuditLogsPage() {
   const session = await requireSession();
-  requirePagePermission(session, "audit.view_all");
+  if (!pageCan(session, "audit.view_all"))
+    return <NoAccess required="audit.view_all" what="the audit log" />;
 
   return (
     <>

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { DetailCardSkeleton } from "@/components/shared/skeletons";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
   EmployeeStatusBadge,
@@ -117,12 +118,7 @@ export function EmployeeDetail({
   const remove = useDeleteEmployee();
 
   if (isLoading) {
-    return (
-      <div className="text-muted-foreground flex items-center justify-center gap-2 rounded-lg border py-16 text-sm">
-        <Loader2 className="size-4 animate-spin" />
-        Loading
-      </div>
-    );
+    return <DetailCardSkeleton fields={4} />;
   }
 
   if (error || !employee) {
@@ -452,7 +448,11 @@ function StatusDialog({
         <div className="grid gap-4">
           <div className="grid gap-2">
             <Label>New status</Label>
-            <Select value={status} onValueChange={(value) => setStatus(value ?? "")}>
+            <Select
+              items={Object.fromEntries(options.map((o) => [o, STATUS_LABELS[o] ?? o]))}
+              value={status}
+              onValueChange={(value) => setStatus(value ?? "")}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Choose" />
               </SelectTrigger>

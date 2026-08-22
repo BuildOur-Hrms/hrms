@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -105,6 +105,35 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
 
   const orgReady = orgOptions?.ready ?? false;
 
+  /**
+   * Label maps for the pickers. Base UI resolves a select trigger's text from
+   * these; without them the trigger shows the underlying value, which for an
+   * org picker means a bare UUID.
+   */
+  const departmentItems = useMemo(
+    () => Object.fromEntries((orgOptions?.departments ?? []).map((d) => [d.id, d.name])),
+    [orgOptions],
+  );
+  const designationItems = useMemo(
+    () => Object.fromEntries((orgOptions?.designations ?? []).map((d) => [d.id, d.title])),
+    [orgOptions],
+  );
+  const locationItems = useMemo(
+    () => Object.fromEntries((orgOptions?.locations ?? []).map((l) => [l.id, l.name])),
+    [orgOptions],
+  );
+  const managerItems = useMemo(
+    () => ({
+      [NONE]: "No manager",
+      ...Object.fromEntries((managers ?? []).map((m) => [m.id, fullName(m.firstName, m.lastName)])),
+    }),
+    [managers],
+  );
+  const typeItems = useMemo(
+    () => Object.fromEntries(employmentTypes.map((t) => [t, TYPE_LABELS[t]])),
+    [],
+  );
+
   return (
     <Dialog
       open={open}
@@ -165,7 +194,11 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                   control={control}
                   name="departmentId"
                   render={({ field }) => (
-                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                    <Select
+                      items={departmentItems}
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Choose" />
                       </SelectTrigger>
@@ -186,7 +219,11 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                   control={control}
                   name="designationId"
                   render={({ field }) => (
-                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                    <Select
+                      items={designationItems}
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Choose" />
                       </SelectTrigger>
@@ -207,7 +244,11 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                   control={control}
                   name="locationId"
                   render={({ field }) => (
-                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                    <Select
+                      items={locationItems}
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Choose" />
                       </SelectTrigger>
@@ -229,6 +270,7 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                   name="managerId"
                   render={({ field }) => (
                     <Select
+                      items={managerItems}
                       value={field.value ?? NONE}
                       onValueChange={(value) => field.onChange(value === NONE ? null : value)}
                     >
@@ -256,7 +298,7 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                   control={control}
                   name="employmentType"
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select items={typeItems} value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>

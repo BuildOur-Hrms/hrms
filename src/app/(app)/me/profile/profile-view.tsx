@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { DetailCardSkeleton } from "@/components/shared/skeletons";
 import { EmptyState } from "@/components/shared/empty-state";
 import { EmployeeStatusBadge, employmentTypeLabel } from "@/components/shared/status-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -92,12 +93,7 @@ export function ProfileView() {
   });
 
   if (isLoading) {
-    return (
-      <div className="text-muted-foreground flex items-center justify-center gap-2 rounded-lg border py-16 text-sm">
-        <Loader2 className="size-4 animate-spin" />
-        Loading your profile
-      </div>
-    );
+    return <DetailCardSkeleton fields={5} />;
   }
 
   if (error || !data) {
