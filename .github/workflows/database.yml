@@ -1,0 +1,102 @@
+# Database operations against Supabase, run from CI.
+#
+# Manual dispatch only — nothing here ever fires on a push. Migrations that
+# run automatically on merge are migrations that can half-apply to production
+# while nobody is watching.
+#
+# GitHub → Actions → Database → Run workflow, then pick an action.
+#
+# Required repository secret:
+#   SUPABASE_DB_URL       session pooler, port 5432 (migrations need session
+#                         state and advisory locks that transaction pooling
+#                         cannot hold)
+#
+# Optional repository secret:
+#   SUPABASE_APP_DB_URL   the connection the deployed app uses — transaction
+#                         pooler, port 6543. Only `doctor` uses it, because
+#                         verifying row-level security over the migration
+#                         connection proves nothing: that role owns the tables.
+#
+# Optional repository variable:
+#   APP_URL               the deployment URL, so seeded invite links are
+#                         clickable rather than pointing at localhost.
+
+name: Database
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: What to run
+        type: choice
+        required: true
+        default: doctor
+        options:
+          - doctor
+          - migrate
+          - migrate-and-seed
+          - seed
+          - create-app-role
+
+jobs:
+  run:
+    name: ${{ inputs.action }}
+    runs-on: ubuntu-latest
+    # Prevents two dispatches racing each other onto the same database.
+    concurrency:
+      group: database-${{ github.repository }}
+      cancel-in-progress: false
+
+    env:
+      NODE_ENV: production
+      # Migrations and the seed both connect over the session pooler.
+      DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+      DIRECT_DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+      APP_URL: ${{ vars.APP_URL || 'http://localhost:3000' }}
+      # The seed mints no sessions, so this only has to satisfy the env schema.
+      AUTH_SECRET: ci-database-job-placeholder-not-used-for-sessions
+      EMAIL_PROVIDER: console
+      QUEUE_DRIVER: inline
+      LOG_LEVEL: info
+      SEED_DEMO: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - run: npm ci
+      - run: npx prisma generate
+
+      - name: Guard against a missing secret
+        run: |
+          if [ -z "${{ secrets.SUPABASE_DB_URL }}" ]; then
+            echo "::error::SUPABASE_DB_URL is not set. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Apply migrations
+        if: inputs.action == 'migrate' || inputs.action == 'migrate-and-seed'
+        run: npx prisma migrate deploy
+
+      - name: Create the application role
+        if: inputs.action == 'create-app-role'
+        run: |
+          npm run db:role
+          echo "::notice::Copy the DATABASE_URL above into Vercel, then re-run this workflow with 'doctor'."
+
+      - name: Seed
+        if: inputs.action == 'seed' || inputs.action == 'migrate-and-seed'
+        run: |
+          npm run db:seed
+          echo "::notice::Invite links are in the log above. They are single-use and expire in 7 days."
+
+      - name: Verify
+        if: inputs.action != 'create-app-role'
+        env:
+          # Check the role the app actually connects as, when we know it.
+          DATABASE_URL: ${{ secrets.SUPABASE_APP_DB_URL || secrets.SUPABASE_DB_URL }}
+        run: npm run db:doctor
