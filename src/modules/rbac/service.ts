@@ -235,3 +235,84 @@ async function emitRoles(ctx: RequestContext, userId: string): Promise<void> {
     actor(ctx),
   );
 }
+
+/**
+ * Invite somebody directly, with the roles they should have.
+ *
+ * The employee-first path — create a record, tick "send invite" — is right for
+ * a new hire. It is wrong for the person who administers the system: an HR
+ * admin brought in to run the thing may have no employee record yet, and
+ * until this existed there was no way to create their account at all through
+ * the product.
+ *
+ * Roles are applied here rather than left for a second step, because an
+ * account with no roles can sign in and see nothing, which looks like the
+ * product being broken.
+ */
+export async function inviteWithRoles(
+  ctx: RequestContext,
+  input: { email: string; roleIds: string[] },
+) {
+  const roles = await ctx.db.role.findMany({
+    where: { id: { in: input.roleIds } },
+    select: { id: true, name: true },
+  });
+  if (roles.length !== input.roleIds.length) throw new NotFoundError("Role");
+
+  const result = await inviteUser(ctx, { email: input.email, employeeId: null });
+
+  for (const role of roles) {
+    await ctx.db.userRole.upsert({
+      where: { userId_roleId: { userId: result.userId, roleId: role.id } },
+      create: { userId: result.userId, roleId: role.id, assignedBy: ctx.userId },
+      update: {},
+    });
+  }
+
+  await emitRoles(ctx, result.userId);
+  return result;
+}
+
+/**
+ * Remove an account that was never used.
+ *
+ * Deliberately narrow. A mistyped email creates an account nobody can ever
+ * sign in to, and leaving that lying around is untidy — but an account that
+ * has signed in has done things, and those things point at it. Deleting it
+ * would strip the actor from its own audit trail, so anything with a login,
+ * an employee record or a role beyond the baseline is disabled instead.
+ */
+export async function deleteUnusedAccount(ctx: RequestContext, userId: string) {
+  const user = await ctx.db.user.findFirst({
+    where: { id: userId },
+    select: {
+      id: true,
+      status: true,
+      lastLoginAt: true,
+      employee: { select: { id: true } },
+    },
+  });
+  if (!user) throw new NotFoundError("User");
+
+  if (userId === ctx.userId) {
+    throw new BusinessRuleError("You cannot delete your own account.", { rule: "self_delete" });
+  }
+  if (user.lastLoginAt || user.status === "active") {
+    throw new BusinessRuleError(
+      "This account has been used. Disable it instead, so its audit trail keeps its author.",
+      { rule: "account_used" },
+    );
+  }
+  if (user.employee) {
+    throw new BusinessRuleError(
+      "This account belongs to an employee record. Remove the link or disable the account instead.",
+      { rule: "account_linked" },
+    );
+  }
+
+  await ctx.db.userRole.deleteMany({ where: { userId } });
+  await ctx.db.passwordResetToken.deleteMany({ where: { userId } });
+  await ctx.db.user.delete({ where: { id: userId } });
+
+  await emit("user.deleted", { userId }, actor(ctx));
+}

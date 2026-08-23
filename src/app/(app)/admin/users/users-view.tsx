@@ -1,7 +1,16 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, Loader2, Mail, ShieldCheck, Unlock, UserX } from "lucide-react";
+import {
+  KeyRound,
+  Loader2,
+  Mail,
+  ShieldCheck,
+  Trash2,
+  Unlock,
+  UserPlus,
+  UserX,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -20,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -61,6 +71,7 @@ export function UsersView({ canManage }: { canManage: boolean }) {
   const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<AppUser | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const users = useQuery({
     queryKey: ["users", q],
@@ -102,16 +113,35 @@ export function UsersView({ canManage }: { canManage: boolean }) {
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Could not do that"),
   });
 
+  const remove = useMutation({
+    mutationFn: (user: AppUser) => api.delete(`/users/${user.id}`),
+    onSuccess: () => {
+      toast.success("Account removed");
+      invalidate();
+    },
+    // The service refuses anything that has been used, and that refusal is the
+    // useful part, so it is shown rather than replaced with a generic message.
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Could not remove"),
+  });
+
   const rows = users.data ?? [];
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Accounts</CardTitle>
-        <CardDescription>
-          Who can sign in, and what each of them is allowed to do. Roles carry every permission — an
-          account with none can sign in and see nothing.
-        </CardDescription>
+      <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
+        <div>
+          <CardTitle>Accounts</CardTitle>
+          <CardDescription>
+            Who can sign in, and what each of them is allowed to do. Roles carry every permission —
+            an account with none can sign in and see nothing.
+          </CardDescription>
+        </div>
+        {canManage ? (
+          <Button size="sm" onClick={() => setInviteOpen(true)}>
+            <UserPlus className="size-4" />
+            Invite user
+          </Button>
+        ) : null}
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -215,6 +245,19 @@ export function UsersView({ canManage }: { canManage: boolean }) {
                               <Mail className="size-4" />
                             </Button>
                           ) : null}
+                          {/* Only offered where it can actually succeed: a
+                              never-used account with nothing pointing at it. */}
+                          {user.status === "invited" && !user.lastLoginAt && !user.employee ? (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Delete ${user.email}`}
+                              disabled={remove.isPending}
+                              onClick={() => remove.mutate(user)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          ) : null}
                           <Button
                             variant="ghost"
                             size="icon-sm"
@@ -247,6 +290,18 @@ export function UsersView({ canManage }: { canManage: boolean }) {
           </div>
         )}
       </CardContent>
+
+      <Dialog open={inviteOpen} onOpenChange={(next) => !next && setInviteOpen(false)}>
+        <DialogContent>
+          <InviteForm
+            roles={roles.data ?? []}
+            onDone={() => {
+              setInviteOpen(false);
+              invalidate();
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editing} onOpenChange={(next) => !next && setEditing(null)}>
         <DialogContent>
@@ -323,5 +378,106 @@ function RolesForm({ user, roles, onDone }: { user: AppUser; roles: Role[]; onDo
         </Button>
       </DialogFooter>
     </div>
+  );
+}
+
+function InviteForm({ roles, onDone }: { roles: Role[]; onDone: () => void }) {
+  const [email, setEmail] = useState("");
+  const [roleIds, setRoleIds] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+
+  const submit = useMutation({
+    mutationFn: () =>
+      api.post<{ userId: string; inviteUrl?: string }>("/users/invite", { email, roleIds }),
+    onSuccess: (result) => {
+      toast.success("Invite created");
+      // Outside production the API hands the link back, so development needs
+      // no mailbox. In production it is emailed and never returned.
+      if (result.inviteUrl) setInviteUrl(result.inviteUrl);
+      else onDone();
+    },
+    onError: (e: unknown) => setError(e instanceof Error ? e.message : "Could not invite"),
+  });
+
+  if (inviteUrl) {
+    return (
+      <div className="grid gap-4">
+        <DialogHeader>
+          <DialogTitle>Invite created</DialogTitle>
+          <DialogDescription>
+            No mail is sent outside production, so here is the link. Single use, expires in seven
+            days.
+          </DialogDescription>
+        </DialogHeader>
+        <code className="bg-muted rounded-lg p-3 text-xs break-all">{inviteUrl}</code>
+        <DialogFooter>
+          <Button type="button" onClick={onDone}>
+            Done
+          </Button>
+        </DialogFooter>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      className="grid gap-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(null);
+        submit.mutate();
+      }}
+    >
+      <DialogHeader>
+        <DialogTitle>Invite a user</DialogTitle>
+        <DialogDescription>
+          For somebody who administers the system rather than appears on the payroll. A new hire is
+          better invited from their employee record, which links the account to the person.
+        </DialogDescription>
+      </DialogHeader>
+
+      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+
+      <div className="grid gap-2">
+        <Label htmlFor="invite-email">Work email</Label>
+        <Input
+          id="invite-email"
+          type="email"
+          required
+          autoFocus
+          value={email}
+          placeholder="name@company.com"
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <Label>Roles</Label>
+        {roles.map((role) => (
+          <label key={role.id} className="flex items-center gap-2.5 text-sm">
+            <Checkbox
+              checked={roleIds.includes(role.id)}
+              onCheckedChange={(checked) =>
+                setRoleIds((ids) =>
+                  checked === true ? [...ids, role.id] : ids.filter((id) => id !== role.id),
+                )
+              }
+            />
+            <span className="capitalize">{roleLabel(role.name)}</span>
+          </label>
+        ))}
+        <p className="text-muted-foreground text-xs">
+          At least one. An account with no roles signs in to an empty application.
+        </p>
+      </div>
+
+      <DialogFooter>
+        <Button type="submit" disabled={submit.isPending || roleIds.length === 0}>
+          {submit.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+          Send invite
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
