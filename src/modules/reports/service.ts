@@ -6,6 +6,7 @@ import { absences, attendanceSummary, lateArrivals } from "./attendance";
 import { auditActivity } from "./audit-activity";
 import { reportBySlug, visibleReports, type ReportColumn, type ReportDefinition } from "./catalog";
 import { headcount } from "./headcount";
+import { leaveCalendar, leaveUsage } from "./leave";
 import { resolveReportScope, type ReportKpi, type ReportRow, type ReportRunner } from "./runner";
 import type { ReportQueryInput, ReportScope } from "./validators";
 
@@ -22,6 +23,8 @@ const RUNNERS: Record<string, ReportRunner> = {
   "attendance-summary": attendanceSummary,
   absences,
   "late-arrivals": lateArrivals,
+  "leave-usage": leaveUsage,
+  "leave-calendar": leaveCalendar,
   "audit-activity": auditActivity,
 };
 
