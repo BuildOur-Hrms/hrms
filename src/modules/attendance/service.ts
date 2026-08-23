@@ -2,6 +2,7 @@ import type { RequestContext } from "@/lib/context";
 import { ConflictError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
 import { resolveScope } from "@/lib/permissions";
+import { holidayDatesFor } from "@/modules/leave/holidays";
 import { effectiveShift } from "@/modules/shifts/service";
 
 import { calcAttendance, resolveWorkDate, type ShiftRules } from "./calc";
@@ -240,14 +241,28 @@ export async function recomputeDay(ctx: DataContext, employeeId: string, workDat
   const shift = await shiftRulesFor(ctx, employeeId, toDateOnly(workDate));
   const punches = await punchesForDay(ctx, employeeId, workDate, timeZone, shift);
 
+  // The two seams M2 left open, now resolved by M3. The calculator still
+  // takes them as booleans and still reads no tables of its own.
+  const [holidays, onLeave] = await Promise.all([
+    holidayDatesFor(ctx, employeeId, workDate, workDate),
+    ctx.db.leaveRequest.findFirst({
+      where: {
+        employeeId,
+        status: "approved",
+        startDate: { lte: toDateOnly(workDate) },
+        endDate: { gte: toDateOnly(workDate) },
+      },
+      select: { id: true },
+    }),
+  ]);
+
   const result = calcAttendance({
     workDate,
     timeZone,
     shift,
     punches: punches.map((p) => ({ punchedAt: p.punchedAt, direction: p.direction })),
-    // Leave and holidays arrive with M3; until then every working day is one.
-    isHoliday: false,
-    isOnLeave: false,
+    isHoliday: holidays.length > 0,
+    isOnLeave: onLeave !== null,
   });
 
   /*
