@@ -40,10 +40,6 @@ function arg(name: string, fallback: number): number {
   return value;
 }
 
-function isoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
 function dateOnly(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
 }
