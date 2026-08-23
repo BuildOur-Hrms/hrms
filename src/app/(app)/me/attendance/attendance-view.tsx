@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { AlertTriangle, Clock, LogIn, LogOut, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -9,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, ApiError } from "@/lib/api-client";
+
+import { CorrectionsPanel } from "./corrections-panel";
+import { MonthCalendar } from "./month-calendar";
 
 interface Punch {
   id: string;
@@ -67,6 +71,9 @@ function clock(iso: string, timeZone: string): string {
 
 export function AttendanceView() {
   const queryClient = useQueryClient();
+  // Clicking a day in the calendar pre-fills the correction form with it,
+  // which is the whole reason someone clicks a day that looks wrong.
+  const [pickedDay, setPickedDay] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["attendance", "day"],
@@ -115,7 +122,34 @@ export function AttendanceView() {
     );
   }
 
-  const { record, shift, punches, checkedIn, timeZone } = data;
+  const checkedIn = data.checkedIn;
+
+  return (
+    <div className="space-y-4">
+      <TodayCard
+        data={data}
+        checkedIn={checkedIn}
+        punching={punch.isPending}
+        onPunch={(d) => punch.mutate(d)}
+      />
+      <MonthCalendar onPickDay={setPickedDay} />
+      <CorrectionsPanel {...(pickedDay ? { defaultDate: pickedDay } : {})} />
+    </div>
+  );
+}
+
+function TodayCard({
+  data,
+  checkedIn,
+  punching,
+  onPunch,
+}: {
+  data: DayResponse;
+  checkedIn: boolean;
+  punching: boolean;
+  onPunch: (direction: "in" | "out") => void;
+}) {
+  const { record, shift, punches, timeZone } = data;
   const worked = record?.workedMinutes ?? 0;
 
   return (
@@ -132,10 +166,10 @@ export function AttendanceView() {
           <Button
             size="lg"
             variant={checkedIn ? "outline" : "default"}
-            disabled={punch.isPending}
-            onClick={() => punch.mutate(checkedIn ? "out" : "in")}
+            disabled={punching}
+            onClick={() => onPunch(checkedIn ? "out" : "in")}
           >
-            {punch.isPending ? (
+            {punching ? (
               <Loader2 className="size-4 animate-spin" />
             ) : checkedIn ? (
               <LogOut className="size-4" />
