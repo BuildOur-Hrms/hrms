@@ -83,6 +83,20 @@ export interface DomainEventMap {
     direction: "in" | "out";
     workDate: string;
   };
+  "attendance.correction_requested": {
+    employeeId: string;
+    correctionId: string;
+    workDate: string;
+  };
+  /// Approving one rewrites what a day is worth, so who decided and what they
+  /// decided both belong in the audit trail.
+  "attendance.correction_reviewed": {
+    employeeId: string;
+    correctionId: string;
+    workDate: string;
+    decision: "approved" | "rejected";
+  };
+  "attendance.correction_cancelled": { employeeId: string; correctionId: string };
 }
 
 export type DomainEventName = keyof DomainEventMap;

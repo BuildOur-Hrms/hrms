@@ -240,8 +240,26 @@ export async function recomputeDay(ctx: DataContext, employeeId: string, workDat
     isOnLeave: false,
   });
 
+  /*
+   * An approved correction can assert a status the punches cannot produce —
+   * `on_leave` on a day nobody clocked in. Re-reading it here rather than
+   * writing it once at approval time is what makes it survive: the nightly
+   * rebuild runs this same path and would otherwise quietly revert the day to
+   * `absent`.
+   */
+  const override = await ctx.db.attendanceCorrection.findFirst({
+    where: {
+      employeeId,
+      workDate: toDateOnly(workDate),
+      status: "approved",
+      requestedStatus: { not: null },
+    },
+    orderBy: { reviewedAt: "desc" },
+    select: { requestedStatus: true },
+  });
+
   const data = {
-    status: result.status,
+    status: override?.requestedStatus ?? result.status,
     firstIn: result.firstIn,
     lastOut: result.lastOut,
     workedMinutes: result.workedMinutes,

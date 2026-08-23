@@ -43,3 +43,50 @@ export const monthQuerySchema = z.object({
 export type MonthQueryInput = z.infer<typeof monthQuerySchema>;
 
 export const idParamSchema = z.object({ id: z.string().uuid() });
+
+/** ISO-8601 instant, e.g. `2026-08-20T09:00:00.000Z`. */
+const instantSchema = z
+  .string()
+  .trim()
+  .refine((v) => !Number.isNaN(Date.parse(v)), "Not a valid date and time");
+
+/**
+ * A correction has to ask for something. The database enforces this too; the
+ * check here is what turns it into a 422 with a readable message rather than a
+ * constraint violation.
+ */
+export const correctionRequestSchema = z
+  .object({
+    workDate: dateOnlySchema,
+    requestedIn: instantSchema.nullish(),
+    requestedOut: instantSchema.nullish(),
+    requestedStatus: z
+      .enum(["present", "absent", "half_day", "on_leave", "holiday", "week_off"])
+      .nullish(),
+    reason: z.string().trim().min(5, "Say what needs correcting").max(1000),
+  })
+  .refine((v) => v.requestedIn != null || v.requestedOut != null || v.requestedStatus != null, {
+    message: "Ask for a time or a status",
+    path: ["requestedIn"],
+  })
+  .refine(
+    (v) =>
+      v.requestedIn == null ||
+      v.requestedOut == null ||
+      Date.parse(v.requestedOut) >= Date.parse(v.requestedIn),
+    { message: "Check-out cannot be before check-in", path: ["requestedOut"] },
+  );
+export type CorrectionRequestInput = z.infer<typeof correctionRequestSchema>;
+
+export const correctionReviewSchema = z.object({
+  decision: z.enum(["approved", "rejected"]),
+  reviewNote: z.string().trim().max(1000).nullish(),
+});
+export type CorrectionReviewInput = z.infer<typeof correctionReviewSchema>;
+
+export const correctionListSchema = z.object({
+  status: z.enum(["pending", "approved", "rejected", "cancelled"]).optional(),
+  /** `mine` is own requests; `team` is what this caller can act on. */
+  scope: z.enum(["mine", "team"]).default("mine"),
+});
+export type CorrectionListInput = z.infer<typeof correctionListSchema>;
