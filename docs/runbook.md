@@ -33,6 +33,11 @@
 > connects as `postgres` and a superuser bypasses every policy. CI runs both
 > suites against real Postgres, which is where those assertions actually
 > execute.
+>
+> **Give the two suites separate databases.** `test:integration` truncates
+> every table between runs, so pointing it at the database `db:seed-e2e`
+> populated deletes the accounts the browser tests sign in as. CI uses
+> `hrms_test` and `hrms_e2e` for exactly this reason.
 
 ---
 
