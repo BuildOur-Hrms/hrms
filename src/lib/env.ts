@@ -37,6 +37,14 @@ const schema = z.object({
   SMTP_URL: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
 
+  /**
+   * Shared secret for the scheduled-job endpoints. Vercel Cron sends it as
+   * `Authorization: Bearer <secret>`. Without it those routes refuse every
+   * request rather than defaulting to open — an unauthenticated endpoint that
+   * rebuilds attendance for the whole company is not a thing to fail open.
+   */
+  CRON_SECRET: z.string().min(16, "CRON_SECRET must be at least 16 characters").optional(),
+
   FIELD_ENCRYPTION_KEY: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
 

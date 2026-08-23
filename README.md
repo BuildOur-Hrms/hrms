@@ -127,6 +127,7 @@ failing validation on a value nobody chose.
 | `AUTH_SECRET`         | 32+ random bytes, base64                      |
 | `QUEUE_DRIVER`        | `inline` — see below                          |
 | `EMAIL_PROVIDER`      | `resend` (and `RESEND_API_KEY`, `EMAIL_FROM`) |
+| `CRON_SECRET`         | 32 random bytes, base64 — see below           |
 | `SEED_DEMO`           | `false`                                       |
 
 `APP_URL` is deliberately **not** in that list. It is derived from Vercel's own
@@ -150,6 +151,19 @@ the worker somewhere with a real process, or move the cron jobs to Vercel Cron
 hitting authenticated endpoints. The app refuses to fall into inline mode in
 production silently — without `QUEUE_DRIVER=inline` set, enqueueing throws and
 `/api/health?ready=1` reports the queue as unavailable.
+
+### 3b. Scheduled jobs
+
+There is no worker process on Vercel, so the nightly attendance rebuild runs as
+a Vercel Cron hitting `/api/v1/cron/attendance-daily-calc`. The schedule lives
+in `vercel.json` and is **UTC**: `30 19 * * *` is 01:00 in Asia/Kolkata, just
+after the day it rebuilds has ended. Each company's "yesterday" is resolved in
+that company's own timezone, not the server's.
+
+The route is authenticated by `CRON_SECRET` alone — there is no session to
+check. Without the variable set it refuses every request rather than defaulting
+to open, because an unauthenticated endpoint that rebuilds attendance for every
+employee is not a thing to fail open.
 
 ### 4. Region
 
