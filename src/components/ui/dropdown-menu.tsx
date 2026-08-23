@@ -53,6 +53,15 @@ function DropdownMenuGroup({ ...props }: MenuPrimitive.Group.Props) {
   return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />;
 }
 
+/**
+ * A heading inside a menu.
+ *
+ * Base UI's `GroupLabel` reads `MenuGroupContext` and throws outright if it is
+ * not inside a `Menu.Group` — which crashed the account menu on every open,
+ * because a label used as a plain heading has no group to belong to. It brings
+ * its own group so it can be used anywhere a heading makes sense, which is how
+ * anyone reaching for something called "Label" expects it to behave.
+ */
 function DropdownMenuLabel({
   className,
   inset,
@@ -61,15 +70,17 @@ function DropdownMenuLabel({
   inset?: boolean;
 }) {
   return (
-    <MenuPrimitive.GroupLabel
-      data-slot="dropdown-menu-label"
-      data-inset={inset}
-      className={cn(
-        "text-muted-foreground px-1.5 py-1 text-xs font-medium data-inset:pl-7",
-        className,
-      )}
-      {...props}
-    />
+    <MenuPrimitive.Group>
+      <MenuPrimitive.GroupLabel
+        data-slot="dropdown-menu-label"
+        data-inset={inset}
+        className={cn(
+          "text-muted-foreground px-1.5 py-1 text-xs font-medium data-inset:pl-7",
+          className,
+        )}
+        {...props}
+      />
+    </MenuPrimitive.Group>
   );
 }
 
