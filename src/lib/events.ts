@@ -45,6 +45,10 @@ export interface DomainEventMap {
   "user.roles_changed": { userId: string; roles: string[] };
   /// Only ever an account that was never used - see deleteUnusedAccount.
   "user.deleted": { userId: string };
+  "announcement.changed": {
+    announcementId: string;
+    action: "drafted" | "published" | "deleted";
+  };
 
   "employee.created": { employeeId: string; employeeCode: string; after: Record<string, unknown> };
   "employee.updated": {

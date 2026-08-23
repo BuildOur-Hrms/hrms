@@ -4,6 +4,7 @@ import { globalSingleton } from "./global-store";
 import { logger } from "./logger";
 import { registerJobHandler } from "./queue";
 import { registerAuditSubscriber } from "@/modules/audit/service";
+import { registerNotificationSubscriber } from "@/modules/notifications/subscriber";
 import { recomputeDayForCompany } from "@/modules/attendance/service";
 import { runAccrual, runYearRollover } from "@/modules/leave/balances";
 import { getSetting } from "@/modules/settings/service";
@@ -26,6 +27,7 @@ export function bootstrap(): void {
   state.done = true;
 
   registerAuditSubscriber();
+  registerNotificationSubscriber();
 
   // With Redis configured the worker owns this job; the registration here is
   // what makes the inline fallback driver able to deliver mail in development.

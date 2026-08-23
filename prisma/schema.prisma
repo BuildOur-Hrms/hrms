@@ -76,6 +76,13 @@ enum AttendanceSource {
   @@map("attendance_source")
 }
 
+enum AnnouncementAudience {
+  company
+  department
+
+  @@map("announcement_audience")
+}
+
 enum AccrualFrequency {
   monthly
   yearly
@@ -169,6 +176,9 @@ model Company {
   leavePolicies        LeavePolicy[]
   leaveBalances        LeaveBalance[]
   leaveRequests        LeaveRequest[]
+  notifications        Notification[]
+  announcements        Announcement[]
+  announcementReads    AnnouncementRead[]
 
   @@map("companies")
 }
@@ -204,9 +214,10 @@ model Department {
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  company      Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  headEmployee Employee?  @relation("DepartmentHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
-  employees    Employee[] @relation("EmployeeDepartment")
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  headEmployee  Employee?      @relation("DepartmentHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
+  employees     Employee[]     @relation("EmployeeDepartment")
+  announcements Announcement[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -266,18 +277,21 @@ model User {
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company             Company                @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  employee            Employee?              @relation("EmployeeUser")
-  userRoles           UserRole[]             @relation("UserRoleHolder")
-  rolesAssigned       UserRole[]             @relation("UserRoleAssignedBy")
-  resetTokens         PasswordResetToken[]
-  settingsUpdated     SystemSetting[]        @relation("SettingUpdatedBy")
-  auditLogs           AuditLog[]             @relation("AuditActor")
-  punchesCreated      AttendancePunch[]      @relation("PunchCreatedBy")
-  overtimeApproved    AttendanceRecord[]     @relation("OvertimeApprovedBy")
-  correctionsReviewed AttendanceCorrection[] @relation("CorrectionReviewedBy")
-  monthLocks          AttendanceMonthLock[]  @relation("MonthLockedBy")
-  leavesReviewed      LeaveRequest[]         @relation("LeaveReviewedBy")
+  company              Company                @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee             Employee?              @relation("EmployeeUser")
+  userRoles            UserRole[]             @relation("UserRoleHolder")
+  rolesAssigned        UserRole[]             @relation("UserRoleAssignedBy")
+  resetTokens          PasswordResetToken[]
+  settingsUpdated      SystemSetting[]        @relation("SettingUpdatedBy")
+  auditLogs            AuditLog[]             @relation("AuditActor")
+  punchesCreated       AttendancePunch[]      @relation("PunchCreatedBy")
+  overtimeApproved     AttendanceRecord[]     @relation("OvertimeApprovedBy")
+  correctionsReviewed  AttendanceCorrection[] @relation("CorrectionReviewedBy")
+  monthLocks           AttendanceMonthLock[]  @relation("MonthLockedBy")
+  leavesReviewed       LeaveRequest[]         @relation("LeaveReviewedBy")
+  notifications        Notification[]
+  announcementsWritten Announcement[]         @relation("AnnouncementAuthor")
+  announcementReads    AnnouncementRead[]
 
   @@unique([companyId, email])
   @@index([companyId, status])
@@ -751,6 +765,72 @@ model LeaveRequest {
   @@index([employeeId, startDate])
   @@index([approverId, status])
   @@map("leave_requests")
+}
+
+/// One row per recipient. Never soft-deleted: a notification is a fact about
+/// something that happened, and hiding it is what `read_at` is for.
+model Notification {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String    @map("company_id") @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  /// The domain event key, so a per-event toggle can find its own rows.
+  type      String    @db.VarChar(60)
+  title     String    @db.VarChar(160)
+  body      String
+  /// Deep link into the app, so a notification is actionable rather than
+  /// merely informative.
+  link      String?   @db.VarChar(255)
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+/// An HR broadcast. Unlike a notification this is one row for everybody, with
+/// read receipts alongside — fanning a company-wide message out to a row per
+/// employee would turn one announcement into a thousand writes.
+model Announcement {
+  id           String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String               @map("company_id") @db.Uuid
+  title        String               @db.VarChar(160)
+  /// Sanitised server-side before it is stored, never on the way out.
+  bodyHtml     String               @map("body_html")
+  audience     AnnouncementAudience @default(company)
+  departmentId String?              @map("department_id") @db.Uuid
+  /// Null means drafted but not yet visible to anyone.
+  publishedAt  DateTime?            @map("published_at") @db.Timestamptz(6)
+  createdBy    String               @map("created_by") @db.Uuid
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt    DateTime?            @map("deleted_at") @db.Timestamptz(6)
+
+  company    Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  department Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  author     User               @relation("AnnouncementAuthor", fields: [createdBy], references: [id], onDelete: Restrict)
+  reads      AnnouncementRead[]
+
+  @@index([companyId, publishedAt(sort: Desc)])
+  @@map("announcements")
+}
+
+model AnnouncementRead {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  announcementId String   @map("announcement_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  readAt         DateTime @default(now()) @map("read_at") @db.Timestamptz(6)
+
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@map("announcement_reads")
 }
 
 model AuditLog {

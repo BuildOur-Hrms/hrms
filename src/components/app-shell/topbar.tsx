@@ -21,6 +21,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { ApiError, api } from "@/lib/api-client";
 import { fullName, initials } from "@/lib/utils";
 
+import { NotificationBell } from "./notification-bell";
 import type { NavSection } from "./nav";
 import { SidebarNav } from "./sidebar";
 
@@ -93,6 +94,8 @@ export function Topbar({
       </Sheet>
 
       <div className="flex-1" />
+
+      <NotificationBell />
 
       <Button
         variant="ghost"

@@ -1,4 +1,5 @@
 import {
+  Bell,
   Building2,
   ClipboardList,
   CalendarCheck,
@@ -36,6 +37,7 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   shifts: Clock,
   attendance: CalendarClock,
   leave: CalendarCheck,
+  notifications: Bell,
   company: Building2,
   locations: MapPin,
   roles: ShieldCheck,

@@ -26,6 +26,7 @@ export type NavIconName =
   | "shifts"
   | "attendance"
   | "leave"
+  | "notifications"
   | "company"
   | "locations"
   | "roles"
@@ -67,6 +68,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/me/leave",
         icon: "leave",
         permissions: ["leave.view_own"],
+      },
+      {
+        label: "Notifications",
+        href: "/me/notifications",
+        icon: "notifications",
+        permissions: [],
       },
     ],
   },
@@ -132,6 +139,12 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: "shifts",
         permissions: ["shifts.manage"],
       },
+      {
+        label: "Announcements",
+        href: "/hr/announcements",
+        icon: "notifications",
+        permissions: ["announcements.create"],
+      },
     ],
   },
   {
@@ -188,9 +201,7 @@ export const NAV_SECTIONS: NavSection[] = [
  * Milestones not yet built. Kept here so the nav's eventual shape is visible
  * in one place rather than scattered across future commits.
  */
-export const PLANNED_NAV: { label: string; milestone: string }[] = [
-  { label: "Notifications", milestone: "M4" },
-];
+export const PLANNED_NAV: { label: string; milestone: string }[] = [];
 
 export function visibleSections(permissions: ReadonlySet<PermissionCode>): NavSection[] {
   return NAV_SECTIONS.map((section) => ({

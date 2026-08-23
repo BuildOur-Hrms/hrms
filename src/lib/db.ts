@@ -89,6 +89,9 @@ const TENANT_MODELS = new Set([
   "LeavePolicy",
   "LeaveBalance",
   "LeaveRequest",
+  "Notification",
+  "Announcement",
+  "AnnouncementRead",
   "User",
   "Role",
   "Employee",
@@ -107,6 +110,7 @@ const SOFT_DELETE_MODELS = new Set([
   "Designation",
   "Shift",
   "LeaveType",
+  "Announcement",
   "Employee",
   "EmergencyContact",
 ]);
