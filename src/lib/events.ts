@@ -105,6 +105,14 @@ export interface DomainEventMap {
     action: "locked" | "reopened";
     records: number;
   };
+
+  /// A holiday change moves what attendance and leave both cost, so the date
+  /// is recorded alongside the id - that is the question asked afterwards.
+  "holiday.changed": {
+    holidayId: string;
+    action: "created" | "updated" | "deleted";
+    holidayDate: string;
+  };
 }
 
 export type DomainEventName = keyof DomainEventMap;
