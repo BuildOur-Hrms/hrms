@@ -58,6 +58,41 @@ export async function notify(ctx: DataContext, inputs: NotifyInput[]): Promise<n
   return created.count;
 }
 
+/**
+ * Create notifications, skipping any the recipient already has.
+ *
+ * The scheduled jobs may fire twice, or be retried after failing halfway, and
+ * somebody told the same thing twice stops reading the bell. Recipient, type
+ * and title are the key: the title is what distinguishes two notices of the
+ * same kind on the same day — two colleagues sharing a birthday, two days of
+ * the same person being late — so keying on type alone would silently swallow
+ * the second one.
+ */
+export async function notifyOnce(
+  ctx: DataContext,
+  since: Date,
+  inputs: NotifyInput[],
+): Promise<number> {
+  if (inputs.length === 0) return 0;
+
+  const existing = await ctx.db.notification.findMany({
+    where: { type: { in: [...new Set(inputs.map((n) => n.type))] }, createdAt: { gte: since } },
+    select: { userId: true, type: true, title: true },
+  });
+
+  const key = (n: { userId: string; type: string; title: string }) =>
+    `${n.userId}|${n.type}|${n.title}`;
+  const seen = new Set(existing.map(key));
+  const fresh: NotifyInput[] = [];
+  for (const input of inputs) {
+    if (seen.has(key(input))) continue;
+    seen.add(key(input));
+    fresh.push(input);
+  }
+
+  return notify(ctx, fresh);
+}
+
 /** The user account behind an employee, when they have one. */
 export async function userIdForEmployee(
   ctx: DataContext,

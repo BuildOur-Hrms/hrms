@@ -1,4 +1,4 @@
-import { notify, userIdsWithPermission, type DataContext, type NotifyInput } from "./service";
+import { notifyOnce, userIdsWithPermission, type DataContext, type NotifyInput } from "./service";
 
 /**
  * The daily notice run (docs/07-workflows-and-automation.md §3): birthdays,
@@ -172,7 +172,7 @@ export async function runDailyNotices(ctx: DataContext, today: string): Promise<
     }
   }
 
-  const written = await notify(ctx, await withoutAlreadySent(ctx, today, notices));
+  const written = await notifyOnce(ctx, toDateOnly(today), notices);
 
   return {
     date: today,
@@ -182,40 +182,4 @@ export async function runDailyNotices(ctx: DataContext, today: string): Promise<
     upcomingHolidays: holidays.length,
     notifications: written,
   };
-}
-
-/**
- * Drop the notices already written for this run.
- *
- * The cron may fire twice, or be retried after failing halfway, and a person
- * told twice that it is someone's birthday stops reading the bell.
- *
- * The title is part of the key, not decoration: two colleagues sharing a
- * birthday produce two notices of the same type to the same recipient, and
- * keying on type alone would silently swallow the second one.
- */
-async function withoutAlreadySent(
-  ctx: DataContext,
-  today: string,
-  notices: NotifyInput[],
-): Promise<NotifyInput[]> {
-  if (notices.length === 0) return notices;
-
-  const existing = await ctx.db.notification.findMany({
-    where: {
-      type: { in: [...new Set(notices.map((n) => n.type))] },
-      createdAt: { gte: toDateOnly(today) },
-    },
-    select: { userId: true, type: true, title: true },
-  });
-
-  const seen = new Set(existing.map((row) => `${row.userId}|${row.type}|${row.title}`));
-  const fresh: NotifyInput[] = [];
-  for (const notice of notices) {
-    const key = `${notice.userId}|${notice.type}|${notice.title}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    fresh.push(notice);
-  }
-  return fresh;
 }

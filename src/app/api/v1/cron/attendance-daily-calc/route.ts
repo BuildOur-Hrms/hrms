@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { bootstrap } from "@/lib/bootstrap";
 import { adminDb, withTenant } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { sendAttendanceNotices } from "@/modules/attendance/notices";
 import { recomputeDayForCompany } from "@/modules/attendance/service";
 
 import { cronAuthorized } from "../authorize";
@@ -21,13 +22,15 @@ export const dynamic = "force-dynamic";
  * platform itself, authenticated by a shared secret.
  */
 
+/** Midnight today, in the company's own timezone rather than the server's. */
+function startOfToday(timeZone: string): Date {
+  const nowThere = new TZDate(new Date(), timeZone);
+  return new Date(Date.UTC(nowThere.getFullYear(), nowThere.getMonth(), nowThere.getDate()));
+}
+
 /** Yesterday, in the company's own timezone rather than the server's. */
 function previousDay(timeZone: string): string {
-  const nowThere = new TZDate(new Date(), timeZone);
-  const yesterday = new Date(
-    Date.UTC(nowThere.getFullYear(), nowThere.getMonth(), nowThere.getDate()) - 86_400_000,
-  );
-  return yesterday.toISOString().slice(0, 10);
+  return new Date(startOfToday(timeZone).getTime() - 86_400_000).toISOString().slice(0, 10);
 }
 
 export async function GET(request: Request) {
@@ -47,11 +50,16 @@ export async function GET(request: Request) {
   for (const company of companies) {
     const workDate = previousDay(company.timezone);
     try {
-      const result = await withTenant(company.id, (db) =>
-        recomputeDayForCompany({ db, companyId: company.id }, workDate, (message, detail) =>
+      const result = await withTenant(company.id, async (db) => {
+        const ctx = { db, companyId: company.id };
+        const calc = await recomputeDayForCompany(ctx, workDate, (message, detail) =>
           logger.warn(detail, message),
-        ),
-      );
+        );
+        // Told after the day is settled, never during: a notice sent from
+        // inside the loop would describe a record that is still being written.
+        const notices = await sendAttendanceNotices(ctx, workDate, startOfToday(company.timezone));
+        return { ...calc, notices };
+      });
       results.push({ companyId: company.id, ...result });
     } catch (error) {
       // One tenant failing must not stop the rest of the platform's nightly run.

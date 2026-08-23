@@ -2,7 +2,7 @@ import { globalSingleton } from "@/lib/global-store";
 import { logger } from "@/lib/logger";
 import { onAny, type DomainEvent } from "@/lib/events";
 
-import { approverUserIdFor, notify, userIdForEmployee } from "./service";
+import { approverUserIdFor, notify, userIdForEmployee, userIdsWithPermission } from "./service";
 
 /**
  * Turns domain events into notifications.
@@ -24,6 +24,7 @@ type Handled = Extract<
   | "attendance.correction_reviewed"
   | "shift.assigned"
   | "leave.balance_adjusted"
+  | "attendance.month_locked"
 >;
 
 function isHandled(name: string): name is Handled {
@@ -34,6 +35,7 @@ function isHandled(name: string): name is Handled {
     "attendance.correction_reviewed",
     "shift.assigned",
     "leave.balance_adjusted",
+    "attendance.month_locked",
   ].includes(name);
 }
 
@@ -170,6 +172,34 @@ export function registerNotificationSubscriber(): void {
               link: "/me/leave",
             },
           ]);
+          return;
+        }
+
+        case "attendance.month_locked": {
+          const payload = event.payload as {
+            year: number;
+            month: number;
+            action: "locked" | "reopened";
+            records: number;
+          };
+          // Addressed to a role, not a person: everybody who can act on
+          // company attendance needs to know the month stopped accepting
+          // changes, including whoever did it.
+          const hr = await userIdsWithPermission(ctx, "attendance.view_all");
+          const month = `${payload.year}-${String(payload.month).padStart(2, "0")}`;
+          await notify(
+            ctx,
+            hr.map((userId) => ({
+              userId,
+              type: event.name,
+              title: `${month} ${payload.action === "locked" ? "locked" : "reopened"}`,
+              body:
+                payload.action === "locked"
+                  ? `${payload.records} record(s) frozen. Punches, corrections and manual entries are now rejected for that month.`
+                  : `${payload.records} record(s) unfrozen. That month accepts changes again.`,
+              link: "/hr/attendance",
+            })),
+          );
           return;
         }
       }
