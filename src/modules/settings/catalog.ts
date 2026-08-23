@@ -127,6 +127,32 @@ export const SETTINGS_CATALOG = {
     group: "notifications",
     label: "Send notification emails",
   },
+  /**
+   * Which notices also go out by email, as event keys
+   * (docs/07-workflows-and-automation.md §3).
+   *
+   * A list rather than a boolean per event: the set is small, it changes as
+   * modules land, and one row a company can narrow beats a dozen switches
+   * nobody will ever find. Everything not named here is in-app only.
+   *
+   * The default is the catalog's own answer to "does this ask the recipient
+   * to do something they cannot see from the app they are not in". An
+   * approval waiting on you does. Somebody's birthday does not.
+   */
+  "notifications.email_events": {
+    scope: "company",
+    schema: z.array(z.string().trim().min(1).max(60)).max(50),
+    default: [
+      "leave.requested",
+      "leave.reviewed",
+      "attendance.correction_requested",
+      "attendance.correction_reviewed",
+      "attendance.absent_no_leave",
+      "probation.ending",
+    ],
+    group: "notifications",
+    label: "Events that also send an email",
+  },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS_CATALOG;

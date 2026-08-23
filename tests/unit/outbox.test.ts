@@ -4,6 +4,7 @@ import type { MailMessage } from "@/lib/email";
 import { queueEmail, withOutbox } from "@/lib/outbox";
 import { registerJobHandler } from "@/lib/queue";
 import { emailsFor } from "@/modules/notifications/channels";
+import { SETTINGS_CATALOG } from "@/modules/settings/catalog";
 import type { NotifyInput } from "@/modules/notifications/service";
 
 /**
@@ -74,7 +75,7 @@ describe("withOutbox", () => {
   });
 });
 
-describe("email channel map", () => {
+describe("email channel policy", () => {
   const notice = (type: string): NotifyInput => ({
     userId: "user-1",
     type,
@@ -82,23 +83,33 @@ describe("email channel map", () => {
     body: "b",
   });
 
-  it("emails the notices that ask the recipient to act", () => {
-    const types = emailsFor(
-      [
-        "leave.requested",
-        "leave.reviewed",
-        "attendance.correction_requested",
-        "attendance.correction_reviewed",
-        "attendance.absent_no_leave",
-        "probation.ending",
-      ].map(notice),
-    ).map((n) => n.type);
+  /** What a company gets before anyone changes the setting. */
+  const byDefault = new Set<string>(SETTINGS_CATALOG["notifications.email_events"].default);
 
-    expect(types).toHaveLength(6);
+  it("emails the notices that ask the recipient to act", () => {
+    const asks = [
+      "leave.requested",
+      "leave.reviewed",
+      "attendance.correction_requested",
+      "attendance.correction_reviewed",
+      "attendance.absent_no_leave",
+      "probation.ending",
+    ];
+    expect(emailsFor(asks.map(notice), byDefault).map((n) => n.type)).toEqual(asks);
   });
 
   it("leaves the ambient ones in-app only", () => {
-    const types = ["birthday", "work_anniversary", "holiday.upcoming", "attendance.late"];
-    expect(emailsFor(types.map(notice))).toEqual([]);
+    const ambient = ["birthday", "work_anniversary", "holiday.upcoming", "attendance.late"];
+    expect(emailsFor(ambient.map(notice), byDefault)).toEqual([]);
+  });
+
+  it("sends nothing once a company empties the list", () => {
+    expect(emailsFor(["leave.requested"].map(notice), new Set())).toEqual([]);
+  });
+
+  it("follows the setting rather than the code when a company narrows it", () => {
+    const onlyApprovals = new Set(["leave.requested"]);
+    const types = emailsFor(["leave.requested", "leave.reviewed"].map(notice), onlyApprovals);
+    expect(types.map((n) => n.type)).toEqual(["leave.requested"]);
   });
 });

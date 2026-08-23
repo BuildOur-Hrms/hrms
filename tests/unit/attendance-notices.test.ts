@@ -52,8 +52,11 @@ function stub(
     companyId: "company-1",
     db: {
       attendanceRecord: { findMany: async () => records },
-      // notify() resolves email addresses for the notices that also send one.
+      // notify() resolves email addresses for the notices that also send one,
+      // and reads the channel policy from settings. An empty settings table
+      // means the catalog defaults apply, which is what a new company has.
       user: { findMany: async () => [] },
+      systemSetting: { findMany: async () => [] },
       notification: {
         findMany: async () => existing,
         createMany: async ({ data }: { data: NotifyInput[] }) => {

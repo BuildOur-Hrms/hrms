@@ -1,49 +1,47 @@
 import { env } from "@/lib/env";
 import { escapeHtml, renderEmailShell } from "@/lib/email";
 import { queueEmail } from "@/lib/outbox";
+import { getSetting } from "@/modules/settings/service";
 
 import type { DataContext, NotifyInput } from "./service";
 
 /**
  * Which notices also go out by email.
  *
- * Taken from the channel column of the catalog in
- * docs/07-workflows-and-automation.md §3. Everything else is in-app only, and
- * deliberately so: a system that emails about every event is a system whose
- * emails get filtered, and then the ones that mattered go unread too.
+ * The policy is a company setting, not a constant:
+ * `notifications.email_enabled` turns the channel off entirely, and
+ * `notifications.email_events` names the event keys that use it. Both default
+ * to the channel column of the catalog in
+ * docs/07-workflows-and-automation.md §3.
  *
- * The rule of thumb behind the list is whether the notice asks the recipient
- * to do something they cannot see from the app they are not currently in. An
- * approval waiting on you does. Somebody's birthday does not.
- *
- * Per-user toggles are Phase 2. Until then this map is the whole policy, in
- * one place, matching the document it came from.
+ * Everything else stays in-app, and deliberately so: a system that emails
+ * about every event is a system whose emails get filtered, and then the ones
+ * that mattered go unread too.
  */
-const EMAIL_TYPES: ReadonlySet<string> = new Set([
-  "leave.requested",
-  "leave.reviewed",
-  "attendance.correction_requested",
-  "attendance.correction_reviewed",
-  "attendance.absent_no_leave",
-  "probation.ending",
-]);
 
-export function emailsFor(notices: NotifyInput[]): NotifyInput[] {
-  return notices.filter((notice) => EMAIL_TYPES.has(notice.type));
+/** Pure half, so the policy can be tested without a database. */
+export function emailsFor(notices: NotifyInput[], allowed: ReadonlySet<string>): NotifyInput[] {
+  return notices.filter((notice) => allowed.has(notice.type));
 }
 
 /**
  * Queue the email copies of a batch of notices.
  *
  * Addresses are resolved in one query rather than one per recipient, and a
- * user without an address is simply skipped — the in-app row is still there,
+ * user without an active account is skipped — the in-app row is still there,
  * which is the point of having two channels.
  */
 export async function queueNotificationEmails(
   ctx: DataContext,
   notices: NotifyInput[],
 ): Promise<number> {
-  const wanted = emailsFor(notices);
+  if (notices.length === 0) return 0;
+
+  const enabled = await getSetting(ctx.db, ctx.companyId, "notifications.email_enabled");
+  if (!enabled) return 0;
+
+  const events = await getSetting(ctx.db, ctx.companyId, "notifications.email_events");
+  const wanted = emailsFor(notices, new Set(events));
   if (wanted.length === 0) return 0;
 
   const users = await ctx.db.user.findMany({

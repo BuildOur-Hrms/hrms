@@ -58,6 +58,9 @@ function stub(options: {
     db: {
       employee: { findMany: async () => options.employees },
       user: { findMany: async () => (options.hrUserIds ?? []).map((id) => ({ id })) },
+      // The email channel reads its policy from settings; an empty table
+      // means the catalog defaults apply, which is what a new company has.
+      systemSetting: { findMany: async () => [] },
       holiday: { findMany: async () => options.holidays ?? [] },
       notification: {
         findMany: async () => options.existing ?? [],
