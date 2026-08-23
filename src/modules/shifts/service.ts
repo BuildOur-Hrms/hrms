@@ -329,7 +329,11 @@ export async function assignShift(
  * will call once M2 lands. Falls back to the company default so a day can
  * still be evaluated for someone who was never explicitly assigned.
  */
-export async function effectiveShift(ctx: RequestContext, employeeId: string, on: Date = today()) {
+export async function effectiveShift(
+  ctx: Pick<RequestContext, "db">,
+  employeeId: string,
+  on: Date = today(),
+) {
   const assignment = await ctx.db.employeeShift.findFirst({
     where: {
       employeeId,

@@ -1,8 +1,10 @@
+import { withTenant } from "./db";
 import { mailer } from "./email";
 import { globalSingleton } from "./global-store";
 import { logger } from "./logger";
 import { registerJobHandler } from "./queue";
 import { registerAuditSubscriber } from "@/modules/audit/service";
+import { recomputeDayForCompany } from "@/modules/attendance/service";
 
 /**
  * One-time process wiring: event subscribers and job handlers.
@@ -32,6 +34,20 @@ export function bootstrap(): void {
       html: payload.html,
       text: payload.text,
     });
+  });
+
+  // The nightly rebuild. Registered here for the same reason `send-email` is:
+  // with Redis the worker owns it, and without Redis the inline driver still
+  // needs a handler or the job silently does nothing.
+  registerJobHandler("attendance-daily-calc", async (payload, context) => {
+    const result = await withTenant(payload.companyId, (db) =>
+      recomputeDayForCompany(
+        { db, companyId: payload.companyId },
+        payload.workDate,
+        (message, detail) => logger.warn({ ...detail, requestId: context.requestId }, message),
+      ),
+    );
+    logger.info({ ...result, companyId: payload.companyId }, "attendance daily calc complete");
   });
 
   logger.info({ mailer: mailer.name }, "bootstrap complete");

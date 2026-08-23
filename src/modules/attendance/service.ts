@@ -20,6 +20,17 @@ import type { PunchInput } from "./validators";
  * safe to apply retroactively.
  */
 
+/**
+ * What the derivation path actually needs: a database handle and a company.
+ *
+ * The nightly job has both and has no request, no caller and no permissions.
+ * Narrowing here rather than manufacturing a fake `RequestContext` keeps it
+ * honest about what it is allowed to touch — in particular it cannot reach
+ * `ctx.permissions`, so a scope check can never be silently skipped by
+ * passing a job context to something that expected a request.
+ */
+export type DataContext = Pick<RequestContext, "db" | "companyId">;
+
 function actor(ctx: RequestContext): EventActor {
   return {
     userId: ctx.userId,
@@ -44,7 +55,7 @@ function isoDate(date: Date): string {
  * the company's. A shift that starts at 09:00 means 09:00 where the person
  * actually is, not where the server happens to run.
  */
-async function employeeContext(ctx: RequestContext, employeeId: string) {
+async function employeeContext(ctx: DataContext, employeeId: string) {
   const employee = await ctx.db.employee.findFirst({
     where: { id: employeeId },
     select: {
@@ -96,7 +107,7 @@ async function assertCanViewAttendance(ctx: RequestContext, employeeId: string):
 }
 
 async function shiftRulesFor(
-  ctx: RequestContext,
+  ctx: DataContext,
   employeeId: string,
   on: Date,
 ): Promise<ShiftRules & { id: string; name: string }> {
@@ -175,7 +186,7 @@ export async function punch(ctx: RequestContext, input: PunchInput) {
  * date" — an overnight shift's punches straddle two of them.
  */
 async function punchesForDay(
-  ctx: RequestContext,
+  ctx: DataContext,
   employeeId: string,
   workDate: string,
   timeZone: string,
@@ -195,7 +206,7 @@ async function punchesForDay(
 }
 
 async function lastPunchOfDay(
-  ctx: RequestContext,
+  ctx: DataContext,
   employeeId: string,
   workDate: string,
   timeZone: string,
@@ -214,7 +225,7 @@ async function lastPunchOfDay(
  * upserts the result, so running it twice changes nothing and running it after
  * a correction picks the correction up.
  */
-export async function recomputeDay(ctx: RequestContext, employeeId: string, workDate: string) {
+export async function recomputeDay(ctx: DataContext, employeeId: string, workDate: string) {
   const { timeZone } = await employeeContext(ctx, employeeId);
   const shift = await shiftRulesFor(ctx, employeeId, toDateOnly(workDate));
   const punches = await punchesForDay(ctx, employeeId, workDate, timeZone, shift);
@@ -403,4 +414,66 @@ export async function getMonth(
   };
 
   return { year, month, days, summary };
+}
+
+// ─────────────────────────────────────────────── nightly calculation
+
+export interface DailyCalcResult {
+  workDate: string;
+  processed: number;
+  needsReview: number;
+  absent: number;
+}
+
+/**
+ * Rebuild one day for everyone employed on it.
+ *
+ * This is what turns "nobody punched" into `absent`. Until it has run for a
+ * date there is no record at all, which is why the month view shows those days
+ * as unknown rather than guessing — a day nobody has evaluated yet is not the
+ * same as a day someone missed.
+ *
+ * Employment is bounded by join and exit date rather than by status: someone
+ * who left in March still has a February that has to stay computable, and
+ * someone hired in March has no February to answer for.
+ *
+ * Each employee is recomputed independently and a failure is logged rather
+ * than thrown. One person with no shift assigned must not stop the other two
+ * hundred from being calculated.
+ */
+export async function recomputeDayForCompany(
+  ctx: DataContext,
+  workDate: string,
+  log?: (message: string, detail: Record<string, unknown>) => void,
+): Promise<DailyCalcResult> {
+  const date = toDateOnly(workDate);
+
+  const employees = await ctx.db.employee.findMany({
+    where: {
+      joinDate: { lte: date },
+      OR: [{ exitDate: null }, { exitDate: { gte: date } }],
+    },
+    select: { id: true },
+  });
+
+  let processed = 0;
+  let needsReview = 0;
+  let absent = 0;
+
+  for (const employee of employees) {
+    try {
+      const record = await recomputeDay(ctx, employee.id, workDate);
+      processed++;
+      if (record.needsReview) needsReview++;
+      if (record.status === "absent") absent++;
+    } catch (error) {
+      log?.("attendance recompute failed for one employee", {
+        employeeId: employee.id,
+        workDate,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return { workDate, processed, needsReview, absent };
 }
