@@ -73,6 +73,16 @@ export interface DomainEventMap {
     effectiveFrom: string;
     previousShiftId: string | null;
   };
+
+  /// Punches are the raw evidence behind a pay figure, so each one is audited
+  /// alongside the work date it was filed under - which is not always the
+  /// calendar date it happened on.
+  "attendance.punched": {
+    employeeId: string;
+    punchId: string;
+    direction: "in" | "out";
+    workDate: string;
+  };
 }
 
 export type DomainEventName = keyof DomainEventMap;
