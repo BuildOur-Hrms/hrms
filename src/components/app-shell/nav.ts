@@ -32,7 +32,8 @@ export type NavIconName =
   | "roles"
   | "users"
   | "settings"
-  | "audit";
+  | "audit"
+  | "reports";
 
 export interface NavItem {
   label: string;
@@ -98,6 +99,12 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: "leave",
         permissions: ["leave.approve"],
       },
+      {
+        label: "Team reports",
+        href: "/team/reports",
+        icon: "reports",
+        permissions: ["reports.view_team"],
+      },
     ],
   },
   {
@@ -144,6 +151,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/hr/announcements",
         icon: "notifications",
         permissions: ["announcements.create"],
+      },
+      {
+        label: "Reports",
+        href: "/hr/reports",
+        icon: "reports",
+        permissions: ["reports.view_all"],
       },
     ],
   },

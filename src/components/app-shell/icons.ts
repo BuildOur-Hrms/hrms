@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Bell,
   Building2,
   ClipboardList,
@@ -44,4 +45,5 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   users: UserCog,
   settings: Settings,
   audit: FileClock,
+  reports: BarChart3,
 };

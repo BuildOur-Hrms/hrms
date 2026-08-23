@@ -180,7 +180,7 @@ export const REPORTS: readonly ReportDefinition[] = [
     purpose: "Sensitive-action review: who did what, to what, and when.",
     teamScoped: false,
     extraPermission: "audit.view_all",
-    filters: ["dateRange", "action", "entityType", "actor"],
+    filters: ["dateRange", "action", "entityType"],
     columns: [
       { key: "at", label: "When", format: "datetime" },
       { key: "actor", label: "Actor" },

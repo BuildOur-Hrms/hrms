@@ -32,9 +32,13 @@ export interface ListMeta {
   total: number;
 }
 
-export interface Paged<T> {
+/**
+ * `meta` is generic because some endpoints describe more than the page —
+ * reports return their columns and KPIs alongside the paging triple.
+ */
+export interface Paged<T, M extends ListMeta = ListMeta> {
   data: T[];
-  meta: ListMeta;
+  meta: M;
 }
 
 const BASE = "/api/v1";
@@ -95,7 +99,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (payload as { data: T }).data;
 }
 
-async function requestPaged<T>(path: string, options: RequestOptions = {}): Promise<Paged<T>> {
+async function requestPaged<T, M extends ListMeta = ListMeta>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<Paged<T, M>> {
   const response = await fetch(buildUrl(path, options.query), {
     method: options.method ?? "GET",
     credentials: "same-origin",
@@ -103,7 +110,7 @@ async function requestPaged<T>(path: string, options: RequestOptions = {}): Prom
   });
 
   const payload = (await response.json()) as
-    | { data: T[]; meta: ListMeta }
+    | { data: T[]; meta: M }
     | { error: { code: string; message: string; details?: Record<string, string[]> } };
 
   if (!response.ok) {
@@ -113,14 +120,17 @@ async function requestPaged<T>(path: string, options: RequestOptions = {}): Prom
     throw new ApiError(response.status, error.code, error.message, error.details);
   }
 
-  return payload as Paged<T>;
+  return payload as Paged<T, M>;
 }
 
 export const api = {
   get: <T>(path: string, query?: RequestOptions["query"], signal?: AbortSignal) =>
     request<T>(path, { method: "GET", ...(query ? { query } : {}), ...(signal ? { signal } : {}) }),
-  list: <T>(path: string, query?: RequestOptions["query"], signal?: AbortSignal) =>
-    requestPaged<T>(path, { ...(query ? { query } : {}), ...(signal ? { signal } : {}) }),
+  list: <T, M extends ListMeta = ListMeta>(
+    path: string,
+    query?: RequestOptions["query"],
+    signal?: AbortSignal,
+  ) => requestPaged<T, M>(path, { ...(query ? { query } : {}), ...(signal ? { signal } : {}) }),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),
   put: <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body }),
