@@ -21,12 +21,12 @@ export default async function HrAttendancePage() {
     <>
       <PageHeader
         title="Attendance"
-        description="The whole company, day by day, and the payroll freeze."
+        description="The whole company, day by day, the payroll freeze, and days entered by hand."
       />
       <div className="space-y-4">
         <MonthLocks canManage={pageCan(session, "attendance.manage")} />
         {pageCan(session, "attendance.approve") ? <CorrectionQueue /> : null}
-        <AttendanceDayGrid scope="all" />
+        <AttendanceDayGrid scope="all" canEnterManually={pageCan(session, "attendance.edit")} />
       </div>
     </>
   );

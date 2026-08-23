@@ -103,6 +103,16 @@ export interface DomainEventMap {
     decision: "approved" | "rejected";
   };
   "attendance.correction_cancelled": { employeeId: string; correctionId: string };
+  /// HR entering a day on somebody's behalf. Rarer than a correction and
+  /// harder to question afterwards, since nobody asked for it — so what was
+  /// entered, and why, is recorded rather than merely the fact that it was.
+  "attendance.manual_entry": {
+    employeeId: string;
+    correctionId: string;
+    workDate: string;
+    entered: { in: string | null; out: string | null; status: string | null };
+    reason: string;
+  };
   /// Freezing or reopening a month changes what payroll may pay out, so both
   /// directions are audited, with how many days moved.
   "attendance.month_locked": {

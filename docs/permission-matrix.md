@@ -24,6 +24,7 @@
 | `GET /api/v1/attendance/day` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/attendance/locks` | `attendance.view_all` | ✓ | ✓ | · | · |
 | `POST /api/v1/attendance/locks` | `attendance.manage` | ✓ | ✓ | · | · |
+| `POST /api/v1/attendance/manual` | `attendance.edit` | ✓ | ✓ | · | · |
 | `GET /api/v1/attendance/month` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/attendance/overview` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/attendance/punch` | `attendance.create` | ✓ | ✓ | ✓ | ✓ |
@@ -107,4 +108,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**95 endpoints.** Permission-gated endpoints reachable per role — super_admin: 50 · hr_admin: 50 · manager: 6 · employee: 4.
+**96 endpoints.** Permission-gated endpoints reachable per role — super_admin: 51 · hr_admin: 51 · manager: 6 · employee: 4.

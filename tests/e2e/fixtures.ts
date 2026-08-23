@@ -37,8 +37,13 @@ export async function signIn(page: Page, email: string): Promise<void> {
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  // The shell is the proof: a failed sign-in stays on /login with an error.
+  // Waiting for the shell rather than the URL. The URL changes the moment
+  // navigation starts, which is before the page it navigated to exists —
+  // asserting on anything inside it at that point is a race.
   await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 export async function signOut(page: Page): Promise<void> {

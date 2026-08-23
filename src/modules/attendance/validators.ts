@@ -84,6 +84,34 @@ export const correctionReviewSchema = z.object({
 });
 export type CorrectionReviewInput = z.infer<typeof correctionReviewSchema>;
 
+/**
+ * HR entering a day on somebody's behalf.
+ *
+ * Deliberately the same shape as a correction request plus the employee: a
+ * manual entry *is* a correction, it just skips the asking. Keeping the shapes
+ * aligned is what lets both end up in the same table and be read back the same
+ * way.
+ */
+export const manualEntrySchema = z
+  .object({
+    employeeId: z.string().uuid(),
+    workDate: dateOnlySchema,
+    checkIn: instantSchema.nullish(),
+    checkOut: instantSchema.nullish(),
+    status: z.enum(["present", "absent", "half_day", "on_leave", "holiday", "week_off"]).nullish(),
+    reason: z.string().trim().min(5, "Say why this day is being entered by hand").max(1000),
+  })
+  .refine((v) => v.checkIn != null || v.checkOut != null || v.status != null, {
+    message: "Enter a time or a status",
+    path: ["checkIn"],
+  })
+  .refine(
+    (v) =>
+      v.checkIn == null || v.checkOut == null || Date.parse(v.checkOut) >= Date.parse(v.checkIn),
+    { message: "Check-out cannot be before check-in", path: ["checkOut"] },
+  );
+export type ManualEntryInput = z.infer<typeof manualEntrySchema>;
+
 export const correctionListSchema = z.object({
   status: z.enum(["pending", "approved", "rejected", "cancelled"]).optional(),
   /** `mine` is own requests; `team` is what this caller can act on. */

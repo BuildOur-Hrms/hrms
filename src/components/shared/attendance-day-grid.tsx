@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ManualEntryDialog, type ManualEntryTarget } from "@/components/shared/manual-entry-dialog";
 import { api } from "@/lib/api-client";
 import { fullName } from "@/lib/utils";
 
@@ -84,8 +85,16 @@ function shiftDate(date: string, by: number): string {
  * One day across a group of people. Shared by the team and company screens,
  * which differ only in scope and in who is allowed to open them.
  */
-export function AttendanceDayGrid({ scope }: { scope: "team" | "all" }) {
+export function AttendanceDayGrid({
+  scope,
+  /** Shows the per-row entry action. The endpoint re-checks the permission. */
+  canEnterManually = false,
+}: {
+  scope: "team" | "all";
+  canEnterManually?: boolean;
+}) {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [entering, setEntering] = useState<ManualEntryTarget | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["attendance", "overview", scope, date],
@@ -165,6 +174,7 @@ export function AttendanceDayGrid({ scope }: { scope: "team" | "all" }) {
                   <TableHead>Worked</TableHead>
                   <TableHead>Late</TableHead>
                   <TableHead>Overtime</TableHead>
+                  {canEnterManually ? <TableHead className="w-20" /> : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -207,6 +217,26 @@ export function AttendanceDayGrid({ scope }: { scope: "team" | "all" }) {
                         ? humanMinutes(record.overtimeMinutes)
                         : "—"}
                     </TableCell>
+                    {canEnterManually ? (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          // A locked day is refused by the server anyway; not
+                          // offering the button is the courtesy half of that.
+                          disabled={record?.locked}
+                          onClick={() =>
+                            setEntering({
+                              employeeId: employee.id,
+                              employeeName: fullName(employee.firstName, employee.lastName),
+                              workDate: date,
+                            })
+                          }
+                        >
+                          Enter
+                        </Button>
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>
@@ -214,6 +244,8 @@ export function AttendanceDayGrid({ scope }: { scope: "team" | "all" }) {
           </div>
         )}
       </CardContent>
+
+      <ManualEntryDialog target={entering} onClose={() => setEntering(null)} />
     </Card>
   );
 }

@@ -80,6 +80,17 @@ const AUDIT_MAP: {
   }),
   "employee.deleted": (p) => ({ entityType: "employee", entityId: p.employeeId }),
 
+  "attendance.manual_entry": (p) => ({
+    entityType: "attendance_record",
+    entityId: p.correctionId,
+    after: {
+      employeeId: p.employeeId,
+      workDate: p.workDate,
+      entered: p.entered,
+      reason: p.reason,
+    },
+  }),
+
   "org.location_changed": (p) => ({ entityType: "location", entityId: p.locationId }),
   "org.department_changed": (p) => ({ entityType: "department", entityId: p.departmentId }),
   "org.designation_changed": (p) => ({ entityType: "designation", entityId: p.designationId }),

@@ -27,9 +27,8 @@ test("a wrong password is refused, without saying which half was wrong", async (
 });
 
 test("signing in opens the app, and signing out closes it again", async ({ page }) => {
+  // `signIn` already waits for the shell, so reaching here is the assertion.
   await signIn(page, USERS.employee);
-  await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible();
-
   await signOut(page);
 
   // Going back to a protected page must not resurrect the session.

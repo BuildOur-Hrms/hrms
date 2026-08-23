@@ -8,6 +8,7 @@ import type {
   CorrectionListInput,
   CorrectionRequestInput,
   CorrectionReviewInput,
+  ManualEntryInput,
 } from "./validators";
 
 /**
@@ -282,4 +283,103 @@ type CorrectionRow = { workDate: Date } & Record<string, unknown>;
 /** Dates leave as `YYYY-MM-DD`; a serialised Date would carry a meaningless time. */
 function present<T extends CorrectionRow>(row: T) {
   return { ...row, workDate: isoDate(row.workDate) };
+}
+
+// ─────────────────────────────────────────────── manual entry
+
+/**
+ * HR entering a day on somebody's behalf (docs/01-modules-core.md §Attendance).
+ *
+ * Written as an already-approved correction rather than as its own kind of
+ * record, and that is the whole design. A status the punches cannot produce —
+ * `on_leave` on a day nobody clocked in — survives only because `recomputeDay`
+ * reads it back from an approved correction on every rebuild. Anything stored
+ * elsewhere would be quietly reverted by the nightly job the same evening.
+ *
+ * So a manual entry is a correction that skipped the asking: same table, same
+ * override path, same audit shape, and one place in the codebase that knows
+ * how a day gets overridden.
+ */
+export async function enterDayManually(ctx: RequestContext, input: ManualEntryInput) {
+  if (!ctx.permissions.has("attendance.edit")) {
+    throw new ForbiddenError("You cannot enter attendance for other people");
+  }
+
+  const employee = await ctx.db.employee.findFirst({
+    where: { id: input.employeeId },
+    select: { id: true, joinDate: true, exitDate: true },
+  });
+  // A foreign id is a 404 rather than a 403: a 403 would confirm the employee
+  // exists somewhere.
+  if (!employee) throw new NotFoundError("Employee");
+
+  const workDate = toDateOnly(input.workDate);
+
+  if (workDate > new Date()) {
+    throw new ConflictError("A day cannot be entered before it has happened.");
+  }
+  if (workDate < employee.joinDate) {
+    throw new ConflictError("That is before this employee joined.");
+  }
+  if (employee.exitDate && workDate > employee.exitDate) {
+    throw new ConflictError("That is after this employee left.");
+  }
+
+  await assertMonthOpen(ctx, input.workDate);
+
+  const entry = await ctx.db.attendanceCorrection.create({
+    data: {
+      companyId: ctx.companyId,
+      employeeId: input.employeeId,
+      workDate,
+      requestedIn: input.checkIn ? new Date(input.checkIn) : null,
+      requestedOut: input.checkOut ? new Date(input.checkOut) : null,
+      requestedStatus: input.status ?? null,
+      reason: input.reason,
+      status: "approved",
+      reviewedBy: ctx.userId,
+      reviewedAt: new Date(),
+      reviewNote: "Entered by HR",
+    },
+    select: CORRECTION_FIELDS,
+  });
+
+  const punches = [
+    { at: input.checkIn, direction: "in" as const },
+    { at: input.checkOut, direction: "out" as const },
+  ].filter((p): p is { at: string; direction: "in" | "out" } => p.at != null);
+
+  if (punches.length > 0) {
+    await ctx.db.attendancePunch.createMany({
+      data: punches.map((p) => ({
+        companyId: ctx.companyId,
+        employeeId: input.employeeId,
+        punchedAt: new Date(p.at),
+        direction: p.direction,
+        source: "manual" as const,
+        note: `Manual entry ${entry.id}`,
+        createdBy: ctx.userId,
+      })),
+    });
+  }
+
+  await recomputeDay(ctx, input.employeeId, input.workDate);
+
+  await emit(
+    "attendance.manual_entry",
+    {
+      employeeId: input.employeeId,
+      correctionId: entry.id,
+      workDate: input.workDate,
+      entered: {
+        in: input.checkIn ?? null,
+        out: input.checkOut ?? null,
+        status: input.status ?? null,
+      },
+      reason: input.reason,
+    },
+    actor(ctx),
+  );
+
+  return present(entry);
 }
