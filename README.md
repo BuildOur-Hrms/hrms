@@ -6,8 +6,9 @@ The blueprint in [`docs/`](docs/README.md) is the specification. This README is
 only how to run what is built. Where the two disagree, the blueprint wins —
 except for the deviations recorded at the bottom of this file.
 
-**Current state:** Phase 1, milestones M0 (foundation), M1 (org & employees) and
-M2 (shifts & attendance). Leave and holidays are M3 and not built yet.
+**Current state:** Phase 1, milestones M0 (foundation), M1 (org & employees),
+M2 (shifts & attendance) and M3 (leave & holidays). M4 (notifications,
+dashboards, reports) and M5 (hardening) are not built yet.
 
 ---
 
@@ -335,16 +336,19 @@ Each of these was a forced choice, not a preference:
 
 ## What is not built yet
 
-Phase 1 milestone M3 onward: leave (types, policies, balances, accruals,
-requests), holidays, notifications, dashboards beyond headcount, and the
-integration / permission-matrix / e2e test suites. Build order is
+Phase 1 milestones M4 and M5: notifications (service, templates, bell,
+centre), announcements, dashboards beyond headcount, the report catalog, the
+birthday and probation crons, and the integration / permission-matrix /
+isolation / e2e test suites. Build order is
 `docs/10-roadmap-testing-deployment.md` §6.
 
-Two seams in M2 are deliberately left open for M3. The calculator takes
-`isHoliday` and `isOnLeave` as arguments rather than reading tables that do not
-exist yet, and the nightly job passes `false` for both — so leave and holidays
-become a matter of resolving those two booleans, not of reworking the rules.
+Smaller gaps inside what is built:
 
-Manual entry by HR is also not built. Approving a correction already writes
-`manual` punches, so the mechanism exists; what is missing is a screen for
-entering one directly without a request behind it.
+- **HR manual attendance entry.** Approving a correction already writes
+  `manual` punches, so the mechanism exists; the screen for entering one
+  directly, without a request behind it, does not.
+- **Leave attachments.** `requiresAttachment` is enforced and
+  `attachment_key` is stored, but there is no upload — S3 arrives with the
+  document module in Phase 2.
+- **Optional holidays.** The column exists and the UI shows the badge;
+  letting an employee pick N from a pool is P2.

@@ -25,6 +25,7 @@ export type NavIconName =
   | "departments"
   | "shifts"
   | "attendance"
+  | "leave"
   | "company"
   | "locations"
   | "roles"
@@ -59,6 +60,12 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: "attendance",
         permissions: ["attendance.view_own"],
       },
+      {
+        label: "My leave",
+        href: "/me/leave",
+        icon: "leave",
+        permissions: ["leave.view_own"],
+      },
     ],
   },
   {
@@ -75,6 +82,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/team/attendance",
         icon: "attendance",
         permissions: ["attendance.view_team"],
+      },
+      {
+        label: "Leave approvals",
+        href: "/team/leave-approvals",
+        icon: "leave",
+        permissions: ["leave.approve"],
       },
     ],
   },
@@ -98,6 +111,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/hr/attendance",
         icon: "attendance",
         permissions: ["attendance.view_all"],
+      },
+      {
+        label: "Leave",
+        href: "/hr/leave",
+        icon: "leave",
+        permissions: ["leave.view_all", "leave.manage", "holidays.manage"],
       },
       {
         label: "Shifts",
@@ -144,8 +163,6 @@ export const NAV_SECTIONS: NavSection[] = [
  * in one place rather than scattered across future commits.
  */
 export const PLANNED_NAV: { label: string; milestone: string }[] = [
-  { label: "Leave", milestone: "M3" },
-  { label: "Holidays", milestone: "M3" },
   { label: "Notifications", milestone: "M4" },
 ];
 
