@@ -3,6 +3,8 @@ import { ConflictError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
 import type { PermissionCode } from "@/lib/permissions";
 
+import { queueNotificationEmails } from "./channels";
+
 /**
  * In-app notifications and HR announcements.
  *
@@ -44,6 +46,11 @@ export interface NotifyInput {
  */
 export async function notify(ctx: DataContext, inputs: NotifyInput[]): Promise<number> {
   if (inputs.length === 0) return 0;
+
+  // The email copies go to the request's outbox, not the wire: they leave
+  // only once the transaction that earned them has committed. See
+  // src/lib/outbox.ts.
+  await queueNotificationEmails(ctx, inputs);
 
   const created = await ctx.db.notification.createMany({
     data: inputs.map((n) => ({

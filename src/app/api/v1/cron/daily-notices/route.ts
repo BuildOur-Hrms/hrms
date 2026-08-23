@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { bootstrap } from "@/lib/bootstrap";
 import { adminDb, withTenant } from "@/lib/db";
+import { withOutbox } from "@/lib/outbox";
 import { logger } from "@/lib/logger";
 import { runDailyNotices } from "@/modules/notifications/daily";
 
@@ -49,8 +50,10 @@ export async function GET(request: Request) {
     const today = companyDate(company.timezone);
 
     try {
-      const result = await withTenant(company.id, (db) =>
-        runDailyNotices({ db, companyId: company.id }, today),
+      // Emails leave only once the run has committed, like every other write
+      // path in the system.
+      const result = await withOutbox(() =>
+        withTenant(company.id, (db) => runDailyNotices({ db, companyId: company.id }, today)),
       );
       results.push({ companyId: company.id, ...result });
     } catch (error) {

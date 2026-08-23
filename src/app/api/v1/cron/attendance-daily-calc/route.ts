@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { bootstrap } from "@/lib/bootstrap";
 import { adminDb, withTenant } from "@/lib/db";
+import { withOutbox } from "@/lib/outbox";
 import { logger } from "@/lib/logger";
 import { sendAttendanceNotices } from "@/modules/attendance/notices";
 import { recomputeDayForCompany } from "@/modules/attendance/service";
@@ -50,16 +51,22 @@ export async function GET(request: Request) {
   for (const company of companies) {
     const workDate = previousDay(company.timezone);
     try {
-      const result = await withTenant(company.id, async (db) => {
-        const ctx = { db, companyId: company.id };
-        const calc = await recomputeDayForCompany(ctx, workDate, (message, detail) =>
-          logger.warn(detail, message),
-        );
-        // Told after the day is settled, never during: a notice sent from
-        // inside the loop would describe a record that is still being written.
-        const notices = await sendAttendanceNotices(ctx, workDate, startOfToday(company.timezone));
-        return { ...calc, notices };
-      });
+      const result = await withOutbox(() =>
+        withTenant(company.id, async (db) => {
+          const ctx = { db, companyId: company.id };
+          const calc = await recomputeDayForCompany(ctx, workDate, (message, detail) =>
+            logger.warn(detail, message),
+          );
+          // Told after the day is settled, never during: a notice sent from
+          // inside the loop would describe a record that is still being written.
+          const notices = await sendAttendanceNotices(
+            ctx,
+            workDate,
+            startOfToday(company.timezone),
+          );
+          return { ...calc, notices };
+        }),
+      );
       results.push({ companyId: company.id, ...result });
     } catch (error) {
       // One tenant failing must not stop the rest of the platform's nightly run.

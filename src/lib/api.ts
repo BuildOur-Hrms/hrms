@@ -19,6 +19,7 @@ import {
   type ErrorDetails,
 } from "./errors";
 import { childLogger } from "./logger";
+import { withOutbox } from "./outbox";
 import { requirePermission, type PermissionCode } from "./permissions";
 import { enforceRateLimit, type RateLimitBucket } from "./rate-limit";
 import {
@@ -274,22 +275,28 @@ export function withApi<TBody = Empty, TQuery = Empty, TParams = Record<string, 
 
       if (options.rateLimit) await enforceRateLimit(options.rateLimit, claims.userId);
 
-      const result = await withTenant(claims.companyId, async (db) => {
-        const identity = await authenticate(db, claims);
+      // The outbox wraps the transaction, not the other way round: emails
+      // queued by anything inside it are sent only once it has committed.
+      const result = await withOutbox(
+        async () =>
+          withTenant(claims.companyId, async (db) => {
+            const identity = await authenticate(db, claims);
 
-        const ctx: RequestContext = {
-          ...identity,
-          requestId,
-          ip,
-          userAgent: req.headers.get("user-agent"),
-          db,
-          log: log.child({ userId: identity.userId, companyId: identity.companyId }),
-        };
+            const ctx: RequestContext = {
+              ...identity,
+              requestId,
+              ip,
+              userAgent: req.headers.get("user-agent"),
+              db,
+              log: log.child({ userId: identity.userId, companyId: identity.companyId }),
+            };
 
-        if (options.permission) requirePermission(ctx, options.permission);
+            if (options.permission) requirePermission(ctx, options.permission);
 
-        return handler({ ctx, body, query, params, req });
-      });
+            return handler({ ctx, body, query, params, req });
+          }),
+        requestId,
+      );
 
       const response = respond(result, options.status ?? 200, requestId);
 

@@ -52,6 +52,8 @@ function stub(
     companyId: "company-1",
     db: {
       attendanceRecord: { findMany: async () => records },
+      // notify() resolves email addresses for the notices that also send one.
+      user: { findMany: async () => [] },
       notification: {
         findMany: async () => existing,
         createMany: async ({ data }: { data: NotifyInput[] }) => {
