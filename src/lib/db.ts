@@ -80,6 +80,8 @@ const TENANT_MODELS = new Set([
   "Designation",
   "Shift",
   "EmployeeShift",
+  "AttendancePunch",
+  "AttendanceRecord",
   "User",
   "Role",
   "Employee",

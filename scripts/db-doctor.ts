@@ -29,6 +29,8 @@ const TENANT_TABLES = [
   "designations",
   "shifts",
   "employee_shifts",
+  "attendance_punches",
+  "attendance_records",
   "system_settings",
   "users",
   "roles",

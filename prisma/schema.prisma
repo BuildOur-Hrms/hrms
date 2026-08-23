@@ -58,6 +58,35 @@ enum EmploymentType {
   @@map("employment_type")
 }
 
+enum PunchDirection {
+  in
+  out
+
+  @@map("punch_direction")
+}
+
+/// Where a punch or a computed record came from. `biometric` is P3; the value
+/// exists now so the enum does not need a migration to accept it later.
+enum AttendanceSource {
+  web
+  mobile
+  biometric
+  manual
+
+  @@map("attendance_source")
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  half_day
+  on_leave
+  holiday
+  week_off
+
+  @@map("attendance_status")
+}
+
 enum EmployeeStatus {
   onboarding
   active
@@ -90,6 +119,8 @@ model Company {
   designations      Designation[]
   shifts            Shift[]
   employeeShifts    EmployeeShift[]
+  punches           AttendancePunch[]
+  attendanceRecords AttendanceRecord[]
   users             User[]
   roles             Role[]
   employees         Employee[]
@@ -192,13 +223,15 @@ model User {
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company         Company              @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  employee        Employee?            @relation("EmployeeUser")
-  userRoles       UserRole[]           @relation("UserRoleHolder")
-  rolesAssigned   UserRole[]           @relation("UserRoleAssignedBy")
-  resetTokens     PasswordResetToken[]
-  settingsUpdated SystemSetting[]      @relation("SettingUpdatedBy")
-  auditLogs       AuditLog[]           @relation("AuditActor")
+  company          Company              @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee         Employee?            @relation("EmployeeUser")
+  userRoles        UserRole[]           @relation("UserRoleHolder")
+  rolesAssigned    UserRole[]           @relation("UserRoleAssignedBy")
+  resetTokens      PasswordResetToken[]
+  settingsUpdated  SystemSetting[]      @relation("SettingUpdatedBy")
+  auditLogs        AuditLog[]           @relation("AuditActor")
+  punchesCreated   AttendancePunch[]    @relation("PunchCreatedBy")
+  overtimeApproved AttendanceRecord[]   @relation("OvertimeApprovedBy")
 
   @@unique([companyId, email])
   @@index([companyId, status])
@@ -329,6 +362,8 @@ model Employee {
   headOfDepartments Department[]       @relation("DepartmentHead")
   emergencyContacts EmergencyContact[]
   shiftAssignments  EmployeeShift[]
+  punches           AttendancePunch[]
+  attendance        AttendanceRecord[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId, status])
@@ -414,6 +449,65 @@ model EmployeeShift {
   @@index([employeeId, effectiveFrom])
   @@index([companyId])
   @@map("employee_shifts")
+}
+
+/// Raw clock events, immutable by design. A wrong punch is superseded by a
+/// correction, never edited: the record of what someone actually pressed is
+/// the only thing that can settle a payroll dispute.
+model AttendancePunch {
+  id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String           @map("company_id") @db.Uuid
+  employeeId String           @map("employee_id") @db.Uuid
+  punchedAt  DateTime         @map("punched_at") @db.Timestamptz(6)
+  direction  PunchDirection
+  source     AttendanceSource @default(web)
+  note       String?          @db.VarChar(255)
+  /// Set only for manual entries, so an HR-entered punch is never mistaken
+  /// for one the employee made themselves.
+  createdBy  String?          @map("created_by") @db.Uuid
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  creator  User?    @relation("PunchCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([companyId, employeeId, punchedAt])
+  @@map("attendance_punches")
+}
+
+/// One computed row per employee per day. Derived from punches, the shift in
+/// force on that date, and (from M3) leave and holidays — so it is always
+/// rebuildable and never the source of truth for what was pressed.
+model AttendanceRecord {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId          String           @map("company_id") @db.Uuid
+  employeeId         String           @map("employee_id") @db.Uuid
+  workDate           DateTime         @map("work_date") @db.Date
+  status             AttendanceStatus
+  source             AttendanceSource @default(web)
+  firstIn            DateTime?        @map("first_in") @db.Timestamptz(6)
+  lastOut            DateTime?        @map("last_out") @db.Timestamptz(6)
+  workedMinutes      Int              @default(0) @map("worked_minutes")
+  lateMinutes        Int              @default(0) @map("late_minutes")
+  overtimeMinutes    Int              @default(0) @map("overtime_minutes")
+  /// Overtime is captured always and paid only once approved (P2 payout).
+  overtimeApproved   Boolean          @default(false) @map("overtime_approved")
+  overtimeApprovedBy String?          @map("overtime_approved_by") @db.Uuid
+  /// Set when the day cannot be trusted as-is — a missing check-out, most often.
+  needsReview        Boolean          @default(false) @map("needs_review")
+  /// Mirrors the month lock, so a locked day is answerable without a join.
+  locked             Boolean          @default(false)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  approvedBy User?    @relation("OvertimeApprovedBy", fields: [overtimeApprovedBy], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, employeeId, workDate])
+  @@index([companyId, workDate])
+  @@index([companyId, workDate, status])
+  @@map("attendance_records")
 }
 
 model AuditLog {
