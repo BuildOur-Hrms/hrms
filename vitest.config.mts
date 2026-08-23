@@ -10,8 +10,9 @@ export default defineConfig({
     globals: true,
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     // Integration and e2e suites need a live database and a browser; they run
-    // in their own CI jobs (docs/10-roadmap-testing-deployment.md §3).
-    exclude: ["node_modules/**", "tests/e2e/**"],
+    // in their own CI jobs, from their own configs
+    // (docs/10-roadmap-testing-deployment.md §3).
+    exclude: ["node_modules/**", "tests/integration/**", "tests/e2e/**"],
     setupFiles: ["tests/setup.ts"],
   },
 });

@@ -85,10 +85,18 @@ jobs:
       # that the hand-written RLS and constraint migrations still apply.
       - run: npx prisma migrate deploy
 
-      # `--passWithNoTests` because the integration suite lands with M5; the
-      # job still proves that every migration, including the hand-written RLS
-      # and constraint SQL, applies cleanly to an empty database.
-      - run: npx vitest run --dir tests/integration --passWithNoTests
+      # The suite must NOT run as the owner. FORCE ROW LEVEL SECURITY subjects
+      # a table's owner to its policies but a superuser skips them entirely,
+      # so a suite run as `hrms` would pass on the application layer alone and
+      # prove nothing about the layer that exists for the day that one is
+      # wrong. The harness refuses to run without this.
+      - run: npm run db:role
+        env:
+          APP_DB_PASSWORD: ci-app-role-password
+
+      - run: npm run test:integration
+        env:
+          DATABASE_URL: postgresql://app_user:ci-app-role-password@localhost:5432/hrms_test
 
   build:
     name: Production build
