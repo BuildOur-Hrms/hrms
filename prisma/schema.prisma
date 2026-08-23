@@ -123,20 +123,21 @@ model Company {
   updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt    DateTime?     @map("deleted_at") @db.Timestamptz(6)
 
-  locations         Location[]
-  departments       Department[]
-  designations      Designation[]
-  shifts            Shift[]
-  employeeShifts    EmployeeShift[]
-  punches           AttendancePunch[]
-  attendanceRecords AttendanceRecord[]
-  corrections       AttendanceCorrection[]
-  users             User[]
-  roles             Role[]
-  employees         Employee[]
-  emergencyContacts EmergencyContact[]
-  systemSettings    SystemSetting[]
-  auditLogs         AuditLog[]
+  locations            Location[]
+  departments          Department[]
+  designations         Designation[]
+  shifts               Shift[]
+  employeeShifts       EmployeeShift[]
+  punches              AttendancePunch[]
+  attendanceRecords    AttendanceRecord[]
+  corrections          AttendanceCorrection[]
+  users                User[]
+  roles                Role[]
+  employees            Employee[]
+  emergencyContacts    EmergencyContact[]
+  systemSettings       SystemSetting[]
+  auditLogs            AuditLog[]
+  attendanceMonthLocks AttendanceMonthLock[]
 
   @@map("companies")
 }
@@ -243,6 +244,7 @@ model User {
   punchesCreated      AttendancePunch[]      @relation("PunchCreatedBy")
   overtimeApproved    AttendanceRecord[]     @relation("OvertimeApprovedBy")
   correctionsReviewed AttendanceCorrection[] @relation("CorrectionReviewedBy")
+  monthLocks          AttendanceMonthLock[]  @relation("MonthLockedBy")
 
   @@unique([companyId, email])
   @@index([companyId, status])
@@ -376,6 +378,7 @@ model Employee {
   punches           AttendancePunch[]
   attendance        AttendanceRecord[]
   corrections       AttendanceCorrection[]
+  monthLocks        AttendanceMonthLock[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId, status])
@@ -554,6 +557,28 @@ model AttendanceCorrection {
   @@index([companyId, status])
   @@index([employeeId, workDate])
   @@map("attendance_corrections")
+}
+
+/// A payroll-safe freeze. Once a month is locked, the attendance it contains
+/// stops moving: no punches, no corrections, no recomputation. Payroll is
+/// calculated from these numbers, and a number that can still change after
+/// payslips are issued is not a number anyone can defend.
+model AttendanceMonthLock {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  year      Int
+  month     Int
+  lockedBy  String   @map("locked_by") @db.Uuid
+  lockedAt  DateTime @default(now()) @map("locked_at") @db.Timestamptz(6)
+  note      String?
+
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  user       User      @relation("MonthLockedBy", fields: [lockedBy], references: [id], onDelete: Restrict)
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+  employeeId String?   @db.Uuid
+
+  @@unique([companyId, year, month])
+  @@map("attendance_month_locks")
 }
 
 model AuditLog {

@@ -2,6 +2,7 @@ import type { RequestContext } from "@/lib/context";
 import { ConflictError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
 
+import { assertMonthOpen } from "./locks";
 import { recomputeDay } from "./service";
 import type {
   CorrectionListInput,
@@ -66,13 +67,14 @@ function ownEmployeeId(ctx: RequestContext): string {
 export async function requestCorrection(ctx: RequestContext, input: CorrectionRequestInput) {
   const employeeId = ownEmployeeId(ctx);
 
+  await assertMonthOpen(ctx, input.workDate);
+
   const record = await ctx.db.attendanceRecord.findFirst({
     where: { employeeId, workDate: toDateOnly(input.workDate) },
     select: { locked: true },
   });
-  // Month locks arrive with the payroll freeze; the per-day flag is already
-  // written by the calculator, so honouring it now costs nothing and means the
-  // lock works the moment it exists.
+  // Belt and braces alongside `assertMonthOpen`: the per-day flag catches a
+  // record frozen on its own, without a month lock behind it.
   if (record?.locked) {
     throw new ConflictError("That month is locked. Ask HR to reopen it.");
   }
@@ -184,6 +186,10 @@ export async function reviewCorrection(
   }
 
   const workDate = isoDate(correction.workDate);
+
+  // A month can be locked between the request and the review, and approving
+  // would write punches into a period payroll has already settled.
+  await assertMonthOpen(ctx, workDate);
 
   if (input.decision === "approved") {
     // Append rather than edit. `manual` and `createdBy` together mean the day

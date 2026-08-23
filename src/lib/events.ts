@@ -97,6 +97,14 @@ export interface DomainEventMap {
     decision: "approved" | "rejected";
   };
   "attendance.correction_cancelled": { employeeId: string; correctionId: string };
+  /// Freezing or reopening a month changes what payroll may pay out, so both
+  /// directions are audited, with how many days moved.
+  "attendance.month_locked": {
+    year: number;
+    month: number;
+    action: "locked" | "reopened";
+    records: number;
+  };
 }
 
 export type DomainEventName = keyof DomainEventMap;

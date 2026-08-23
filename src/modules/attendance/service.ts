@@ -5,6 +5,7 @@ import { resolveScope } from "@/lib/permissions";
 import { effectiveShift } from "@/modules/shifts/service";
 
 import { calcAttendance, resolveWorkDate, type ShiftRules } from "./calc";
+import { assertMonthOpen } from "./locks";
 import type { PunchInput } from "./validators";
 
 /**
@@ -146,6 +147,10 @@ export async function punch(ctx: RequestContext, input: PunchInput) {
       ? provisional
       : await shiftRulesFor(ctx, employeeId, toDateOnly(workDate));
 
+  // Asked before anything is written: a locked month must refuse the punch
+  // rather than accept it and quietly decline to count it.
+  await assertMonthOpen(ctx, workDate);
+
   const last = await lastPunchOfDay(ctx, employeeId, workDate, timeZone, shift);
   if (last && last.direction === input.direction) {
     throw new ConflictError(
@@ -226,6 +231,11 @@ async function lastPunchOfDay(
  * a correction picks the correction up.
  */
 export async function recomputeDay(ctx: DataContext, employeeId: string, workDate: string) {
+  // A frozen month is frozen for the nightly job too. Payroll has already been
+  // run against these numbers; recomputing them now is exactly the silent
+  // change the lock exists to prevent.
+  await assertMonthOpen(ctx, workDate);
+
   const { timeZone } = await employeeContext(ctx, employeeId);
   const shift = await shiftRulesFor(ctx, employeeId, toDateOnly(workDate));
   const punches = await punchesForDay(ctx, employeeId, workDate, timeZone, shift);

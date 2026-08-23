@@ -32,6 +32,7 @@ const TENANT_TABLES = [
   "attendance_punches",
   "attendance_records",
   "attendance_corrections",
+  "attendance_month_locks",
   "system_settings",
   "users",
   "roles",
