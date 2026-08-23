@@ -24,6 +24,16 @@
 | `npm run test:integration` | Isolation, permission matrix and workflow guards, against a real database. |
 | `npm run test:e2e` | Browser journeys against a production build. |
 
+> **On the local database.** `npm run db:local` runs PGlite — PostgreSQL
+> compiled to WebAssembly — which serialises every query through one thread.
+> It is enough for development and for the application half of the integration
+> suite, and it will drop connections under a sustained run. Two consequences:
+> set `DB_POOL_MAX=2` when pointing a server at it (the test configs already
+> do), and expect the row-level-security tests to skip, because PGlite always
+> connects as `postgres` and a superuser bypasses every policy. CI runs both
+> suites against real Postgres, which is where those assertions actually
+> execute.
+
 ---
 
 ## 2. The one thing people get wrong

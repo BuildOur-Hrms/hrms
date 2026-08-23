@@ -58,8 +58,14 @@ export async function checkRateLimit(
   bucket: RateLimitBucket,
   identifier: string,
 ): Promise<RateLimitResult> {
-  // Limits would make integration tests order-dependent and flaky.
-  if (env.NODE_ENV === "test") {
+  // Off in test by default: limits would make most suites order-dependent and
+  // flaky, since they share one process and one counter.
+  //
+  // `RATE_LIMITS_IN_TEST=on` puts them back, for the one suite whose job is to
+  // prove they are wired to the endpoints at all. A security control that
+  // cannot be exercised in the only environment tests run in is a control
+  // nobody notices breaking.
+  if (env.NODE_ENV === "test" && process.env["RATE_LIMITS_IN_TEST"] !== "on") {
     return { allowed: true, remaining: Number.MAX_SAFE_INTEGER, retryAfterSeconds: 0 };
   }
 

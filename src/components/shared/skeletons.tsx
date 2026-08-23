@@ -100,3 +100,50 @@ export function ProfileHeaderSkeleton() {
     </div>
   );
 }
+
+/**
+ * A panel home: a row of numbers, then the panels under them.
+ *
+ * The tiles are the part worth getting right. They are the first thing on the
+ * screen and the first thing to arrive, so a placeholder that is the wrong
+ * height makes the whole page jump the moment the data lands.
+ */
+export function PanelHomeSkeleton({ tiles = 4, panels = 2 }: { tiles?: number; panels?: number }) {
+  return (
+    <>
+      <StatCardsSkeleton count={tiles} />
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        {Array.from({ length: panels }, (_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-5 w-40" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {Array.from({ length: 4 }, (_, r) => (
+                <Skeleton key={r} className="h-4 w-full" />
+              ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** A grid of cards — the report catalog, the roles list. */
+export function CardGridSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: count }, (_, i) => (
+        <Card key={i}>
+          <CardContent className="space-y-3 p-5">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-8 w-28" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}

@@ -22,6 +22,10 @@ export default defineConfig({
     // serialises anyway) buy nothing and make failures interleave.
     fileParallelism: false,
     sequence: { concurrent: false },
+    // The suite is sequential, so a large pool buys nothing — and PGlite,
+    // the zero-install local database, gives up entirely under one sized for
+    // a real server.
+    env: { DB_POOL_MAX: process.env["DB_POOL_MAX"] ?? "2" },
     testTimeout: 30_000,
     hookTimeout: 60_000,
   },
