@@ -76,6 +76,15 @@ enum AttendanceSource {
   @@map("attendance_source")
 }
 
+enum CorrectionStatus {
+  pending
+  approved
+  rejected
+  cancelled
+
+  @@map("correction_status")
+}
+
 enum AttendanceStatus {
   present
   absent
@@ -121,6 +130,7 @@ model Company {
   employeeShifts    EmployeeShift[]
   punches           AttendancePunch[]
   attendanceRecords AttendanceRecord[]
+  corrections       AttendanceCorrection[]
   users             User[]
   roles             Role[]
   employees         Employee[]
@@ -223,15 +233,16 @@ model User {
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company          Company              @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  employee         Employee?            @relation("EmployeeUser")
-  userRoles        UserRole[]           @relation("UserRoleHolder")
-  rolesAssigned    UserRole[]           @relation("UserRoleAssignedBy")
-  resetTokens      PasswordResetToken[]
-  settingsUpdated  SystemSetting[]      @relation("SettingUpdatedBy")
-  auditLogs        AuditLog[]           @relation("AuditActor")
-  punchesCreated   AttendancePunch[]    @relation("PunchCreatedBy")
-  overtimeApproved AttendanceRecord[]   @relation("OvertimeApprovedBy")
+  company             Company                @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee            Employee?              @relation("EmployeeUser")
+  userRoles           UserRole[]             @relation("UserRoleHolder")
+  rolesAssigned       UserRole[]             @relation("UserRoleAssignedBy")
+  resetTokens         PasswordResetToken[]
+  settingsUpdated     SystemSetting[]        @relation("SettingUpdatedBy")
+  auditLogs           AuditLog[]             @relation("AuditActor")
+  punchesCreated      AttendancePunch[]      @relation("PunchCreatedBy")
+  overtimeApproved    AttendanceRecord[]     @relation("OvertimeApprovedBy")
+  correctionsReviewed AttendanceCorrection[] @relation("CorrectionReviewedBy")
 
   @@unique([companyId, email])
   @@index([companyId, status])
@@ -352,18 +363,19 @@ model Employee {
   updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt        DateTime?      @map("deleted_at") @db.Timestamptz(6)
 
-  company           Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  user              User?              @relation("EmployeeUser", fields: [userId], references: [id], onDelete: SetNull)
-  department        Department         @relation("EmployeeDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
-  designation       Designation        @relation(fields: [designationId], references: [id], onDelete: Restrict)
-  location          Location           @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  manager           Employee?          @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
-  directReports     Employee[]         @relation("EmployeeManager")
-  headOfDepartments Department[]       @relation("DepartmentHead")
+  company           Company                @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  user              User?                  @relation("EmployeeUser", fields: [userId], references: [id], onDelete: SetNull)
+  department        Department             @relation("EmployeeDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
+  designation       Designation            @relation(fields: [designationId], references: [id], onDelete: Restrict)
+  location          Location               @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  manager           Employee?              @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
+  directReports     Employee[]             @relation("EmployeeManager")
+  headOfDepartments Department[]           @relation("DepartmentHead")
   emergencyContacts EmergencyContact[]
   shiftAssignments  EmployeeShift[]
   punches           AttendancePunch[]
   attendance        AttendanceRecord[]
+  corrections       AttendanceCorrection[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId, status])
@@ -508,6 +520,40 @@ model AttendanceRecord {
   @@index([companyId, workDate])
   @@index([companyId, workDate, status])
   @@map("attendance_records")
+}
+
+/// A regularization request: "I forgot to punch out on Tuesday".
+///
+/// Approving one does not edit history. It writes `manual` punches for the
+/// times asked for and recomputes the day, so the record stays derived and the
+/// original punch stream stays intact — which is the whole reason punches are
+/// append-only.
+model AttendanceCorrection {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String            @map("company_id") @db.Uuid
+  employeeId      String            @map("employee_id") @db.Uuid
+  workDate        DateTime          @map("work_date") @db.Date
+  requestedIn     DateTime?         @map("requested_in") @db.Timestamptz(6)
+  requestedOut    DateTime?         @map("requested_out") @db.Timestamptz(6)
+  /// For the cases punches cannot express — a day that should read `on_leave`
+  /// rather than `absent`. Re-applied on every recompute, so it survives the
+  /// nightly rebuild instead of being silently undone by it.
+  requestedStatus AttendanceStatus? @map("requested_status")
+  reason          String
+  status          CorrectionStatus  @default(pending)
+  reviewedBy      String?           @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?         @map("reviewed_at") @db.Timestamptz(6)
+  reviewNote      String?           @map("review_note")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  reviewer User?    @relation("CorrectionReviewedBy", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@index([employeeId, workDate])
+  @@map("attendance_corrections")
 }
 
 model AuditLog {

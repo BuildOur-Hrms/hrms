@@ -82,6 +82,7 @@ const TENANT_MODELS = new Set([
   "EmployeeShift",
   "AttendancePunch",
   "AttendanceRecord",
+  "AttendanceCorrection",
   "User",
   "Role",
   "Employee",
