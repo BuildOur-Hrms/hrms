@@ -21,7 +21,8 @@
     "db:doctor": "tsx scripts/db-doctor.ts",
     "db:local": "tsx scripts/local-db.ts",
     "db:role": "tsx scripts/create-app-role.ts",
-    "db:remove-demo": "tsx scripts/remove-demo-org.ts"
+    "db:remove-demo": "tsx scripts/remove-demo-org.ts",
+    "db:rename-company": "tsx scripts/rename-company.ts"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",

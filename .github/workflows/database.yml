@@ -42,12 +42,18 @@ on:
           - migrate-and-seed
           - seed
           - remove-demo
+          - rename-company
           - create-app-role
       seed_demo:
         description: Also insert the demo organisation (never for production)
         type: boolean
         required: false
         default: false
+      from_slug:
+        description: "rename-company only: the company's CURRENT slug"
+        type: string
+        required: false
+        default: acme
 
 jobs:
   run:
@@ -120,6 +126,14 @@ jobs:
       - name: Remove the demo organisation
         if: inputs.action == 'remove-demo'
         run: npm run db:remove-demo -- --apply
+
+      - name: Rename the company
+        if: inputs.action == 'rename-company'
+        env:
+          FROM_SLUG: ${{ inputs.from_slug }}
+        run: |
+          npm run db:rename-company -- --apply
+          echo "::notice::Set the SEED_COMPANY_NAME and SEED_COMPANY_SLUG repository variables to match, or the next seed will not find this row."
 
       - name: Verify
         if: inputs.action != 'create-app-role'
