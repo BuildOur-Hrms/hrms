@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Mail, ShieldAlert, Trash2, UserCog } from "lucide-react";
+import { Loader2, Mail, Pencil, ShieldAlert, Trash2, UserCog } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -38,6 +38,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+import { EditEmployeeDialog } from "./edit-employee-dialog";
 import { ShiftAssignment } from "./shift-assignment";
 import {
   employeeKeys,
@@ -115,6 +116,7 @@ export function EmployeeDetail({
   const { data, isLoading, error } = useEmployee(id);
 
   const [statusOpen, setStatusOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const employee = data as unknown as EmployeeDetailData | undefined;
@@ -185,6 +187,12 @@ export function EmployeeDetail({
 
         <div className="flex flex-wrap items-center gap-2">
           <EmployeeStatusBadge status={employee.status} />
+          {canEdit ? (
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil className="size-4" />
+              Edit
+            </Button>
+          ) : null}
           {canEdit && NEXT_STATUSES[employee.status]!.length > 0 ? (
             <Button variant="outline" size="sm" onClick={() => setStatusOpen(true)}>
               <UserCog className="size-4" />
@@ -371,6 +379,8 @@ export function EmployeeDetail({
           </TabsContent>
         ) : null}
       </Tabs>
+
+      <EditEmployeeDialog employee={employee as never} open={editOpen} onOpenChange={setEditOpen} />
 
       <StatusDialog
         open={statusOpen}
