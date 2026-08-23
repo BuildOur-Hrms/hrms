@@ -113,6 +113,15 @@ export interface DomainEventMap {
     action: "created" | "updated" | "deleted";
     holidayDate: string;
   };
+
+  "leave.type_changed": {
+    leaveTypeId: string;
+    action: "created" | "updated" | "deleted";
+    changedFields?: string[];
+  };
+  /// A policy revision overwrites rather than versions, so the audit entry is
+  /// the only record that the rules used to say something else.
+  "leave.policy_changed": { leaveTypeId: string; action: "created" | "updated" };
 }
 
 export type DomainEventName = keyof DomainEventMap;
