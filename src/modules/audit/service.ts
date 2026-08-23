@@ -1,7 +1,14 @@
 import type { RequestContext } from "@/lib/context";
 import { withPlatform, type TenantTx } from "@/lib/db";
+import { toCsv, type CsvColumn } from "@/lib/csv";
 import { globalSingleton } from "@/lib/global-store";
-import { type DomainEventMap, type DomainEventName, type EventActor, onAny } from "@/lib/events";
+import {
+  emit,
+  type DomainEventMap,
+  type DomainEventName,
+  type EventActor,
+  onAny,
+} from "@/lib/events";
 import { logger } from "@/lib/logger";
 
 /**
@@ -89,6 +96,12 @@ const AUDIT_MAP: {
       entered: p.entered,
       reason: p.reason,
     },
+  }),
+
+  "audit.exported": (p) => ({
+    entityType: "audit_log",
+    entityId: null,
+    after: { count: p.count, filters: p.filters },
   }),
 
   "org.location_changed": (p) => ({ entityType: "location", entityId: p.locationId }),
@@ -267,4 +280,123 @@ export async function auditActions(ctx: RequestContext): Promise<string[]> {
     take: 200,
   });
   return rows.map((r) => r.action);
+}
+
+// ─────────────────────────────────────────────── export
+
+/**
+ * How many rows one export may take.
+ *
+ * A cap rather than a stream, for now. The number is stated in the response
+ * headers and in the notice on the screen, because a truncated export that
+ * looks complete is worse than one that refuses: somebody will file it as
+ * evidence.
+ */
+export const AUDIT_EXPORT_LIMIT = 10_000;
+
+const EXPORT_COLUMNS: CsvColumn<AuditExportRow>[] = [
+  { key: "at", label: "When", value: (r) => r.createdAt.toISOString() },
+  { key: "actor", label: "Actor", value: (r) => r.actor?.email ?? "system" },
+  {
+    key: "actorName",
+    label: "Actor name",
+    value: (r) =>
+      r.actor?.employee
+        ? [r.actor.employee.firstName, r.actor.employee.lastName].filter(Boolean).join(" ")
+        : "",
+  },
+  { key: "action", label: "Action" },
+  { key: "entityType", label: "Entity" },
+  { key: "entityId", label: "Entity id" },
+  { key: "ip", label: "IP" },
+  {
+    key: "changed",
+    label: "Changed fields",
+    value: (r) => changedFields(r.before, r.after).join(" "),
+  },
+];
+
+interface AuditExportRow {
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  before: unknown;
+  after: unknown;
+  ip: string | null;
+  createdAt: Date;
+  actor: { email: string; employee: { firstName: string; lastName: string | null } | null } | null;
+}
+
+/**
+ * Field *names*, never values.
+ *
+ * An export is the easiest way for data to leave the building, and the reason
+ * somebody exports the audit trail is to see the shape of what happened. The
+ * detail drawer in the viewer already gates the values behind a permission;
+ * a spreadsheet leaves the building with them in it.
+ */
+function changedFields(before: unknown, after: unknown): string[] {
+  const keys = new Set<string>();
+  for (const side of [before, after]) {
+    if (side && typeof side === "object" && !Array.isArray(side)) {
+      const record = side as Record<string, unknown>;
+      const named = record["changedFields"];
+      if (Array.isArray(named)) named.forEach((k) => keys.add(String(k)));
+      else Object.keys(record).forEach((k) => keys.add(k));
+    }
+  }
+  return [...keys].sort();
+}
+
+/**
+ * The audit trail as CSV, and a row in the audit trail saying so.
+ *
+ * Exporting is itself audited (docs/03-modules-platform-and-reports.md
+ * §Module 20). The one action nobody would think to log is the one that takes
+ * the log out of the system.
+ */
+export async function exportAuditLogs(
+  ctx: RequestContext,
+  input: Omit<ListAuditInput, "page" | "pageSize">,
+): Promise<{ csv: string; count: number; truncated: boolean }> {
+  const result = await listAuditLogs(ctx, {
+    ...input,
+    page: 1,
+    pageSize: AUDIT_EXPORT_LIMIT,
+  });
+
+  const rows = result.data as unknown as AuditExportRow[];
+  const truncated = result.meta.total > rows.length;
+
+  await emitExport(ctx, rows.length, input);
+
+  return { csv: toCsv(EXPORT_COLUMNS, rows), count: rows.length, truncated };
+}
+
+async function emitExport(
+  ctx: RequestContext,
+  count: number,
+  input: Omit<ListAuditInput, "page" | "pageSize">,
+): Promise<void> {
+  await emit(
+    "audit.exported",
+    {
+      count,
+      filters: {
+        action: input.action,
+        entityType: input.entityType,
+        actorUserId: input.actorUserId,
+        from: input.from,
+        to: input.to,
+      },
+    },
+    {
+      userId: ctx.userId,
+      companyId: ctx.companyId,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      requestId: ctx.requestId,
+      db: ctx.db,
+    },
+  );
 }

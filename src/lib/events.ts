@@ -122,6 +122,14 @@ export interface DomainEventMap {
     records: number;
   };
 
+  /// Taking data out of the system is itself a sensitive action, so the
+  /// export is recorded alongside the rows it copied — who, how many, and
+  /// under which filters.
+  "audit.exported": {
+    count: number;
+    filters: Record<string, string | undefined>;
+  };
+
   /// A holiday change moves what attendance and leave both cost, so the date
   /// is recorded alongside the id - that is the question asked afterwards.
   "holiday.changed": {

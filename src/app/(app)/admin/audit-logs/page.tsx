@@ -19,7 +19,7 @@ export default async function AuditLogsPage() {
         title="Audit log"
         description="Append-only record of who changed what. Entries cannot be edited or deleted."
       />
-      <AuditViewer />
+      <AuditViewer canExport={pageCan(session, "audit.export")} />
     </>
   );
 }

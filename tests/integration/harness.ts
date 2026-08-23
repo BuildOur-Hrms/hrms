@@ -328,12 +328,17 @@ export interface CallResult<T = unknown> {
   error: { code: string; message: string } | null;
 }
 
-/** Invoke a route handler the way Next would, with a real signed session. */
-export async function call<T = unknown>(
+/**
+ * Invoke a route handler the way Next would, and hand back the raw response.
+ *
+ * For the endpoints that do not answer in JSON — a CSV download, a file. `call`
+ * is the one to reach for otherwise.
+ */
+export async function callRaw(
   handler: Handler,
   path: string,
   options: CallOptions = {},
-): Promise<CallResult<T>> {
+): Promise<Response> {
   const url = new URL(path, APP_URL);
   for (const [key, value] of Object.entries(options.query ?? {})) {
     if (value !== undefined) url.searchParams.set(key, String(value));
@@ -346,13 +351,24 @@ export async function call<T = unknown>(
   // The pipeline rejects a cross-origin mutation; a browser would send this.
   headers.set("origin", APP_URL);
 
+  // A `NextRequest`, not a `Request`: the pipeline reads `nextUrl`, which only
+  // the former has.
   const request = new NextRequest(url, {
     method,
     headers,
     ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
   });
 
-  const response = await handler(request, { params: Promise.resolve(options.params ?? {}) });
+  return handler(request, { params: Promise.resolve(options.params ?? {}) });
+}
+
+/** Invoke a route handler and unwrap the `{ data, error }` envelope. */
+export async function call<T = unknown>(
+  handler: Handler,
+  path: string,
+  options: CallOptions = {},
+): Promise<CallResult<T>> {
+  const response = await callRaw(handler, path, options);
   const payload = (await response.json().catch(() => null)) as {
     data?: T;
     error?: { code: string; message: string };

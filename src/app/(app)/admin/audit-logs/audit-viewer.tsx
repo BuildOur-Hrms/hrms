@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { FileClock } from "lucide-react";
+import { Download, FileClock } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 
 import { TableSkeleton } from "@/components/shared/skeletons";
@@ -68,7 +68,7 @@ const ENTITY_TYPES = [
   "system_setting",
 ];
 
-export function AuditViewer() {
+export function AuditViewer({ canExport = false }: { canExport?: boolean }) {
   const [entityType, setEntityType] = useState(ALL);
   const [action, setAction] = useState("");
   const [from, setFrom] = useState("");
@@ -164,6 +164,27 @@ export function AuditViewer() {
           />
         </div>
       </div>
+
+      {canExport ? (
+        <div className="flex justify-end">
+          {/*
+            A bare anchor, not `ButtonLink`. That renders a next/link, which
+            intercepts the click and navigates client-side — and a client-side
+            navigation to a file download does nothing at all. The browser
+            already knows how to save a response with a Content-Disposition on
+            it; the job here is to stay out of its way.
+          */}
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<a href={`/api/v1/audit-logs/export${exportQuery(params)}`} />}
+          >
+            <Download className="size-4" />
+            Download CSV
+          </Button>
+        </div>
+      ) : null}
 
       {error ? (
         <EmptyState
@@ -292,6 +313,24 @@ export function AuditViewer() {
       )}
     </div>
   );
+}
+
+/**
+ * The current filters as a query string, minus the paging.
+ *
+ * An export follows what is on the screen — downloading something other than
+ * what you are looking at is the kind of surprise that ends up in a
+ * compliance report.
+ */
+function exportQuery(params: Record<string, unknown>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (key === "page" || key === "pageSize") continue;
+    if (value === undefined || value === null || value === "") continue;
+    search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
 }
 
 function DiffBlock({ label, value }: { label: string; value: unknown }) {
