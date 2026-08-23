@@ -497,6 +497,31 @@ export async function inviteUser(
     });
   }
 
+  /*
+   * Give a brand-new account the baseline role.
+   *
+   * Without this an invited employee sets a password, signs in, and finds an
+   * empty application — every nav entry and every endpoint gates on
+   * `attendance.view_own`, `leave.view_own` and the rest, none of which they
+   * hold. Self-service is what an invite is *for*, so it is the floor rather
+   * than something somebody has to remember to grant afterwards.
+   *
+   * Only ever added, never replaced: re-inviting somebody who is already a
+   * manager must not quietly demote them.
+   */
+  const existingRoles = await ctx.db.userRole.count({ where: { userId } });
+  if (existingRoles === 0) {
+    const baseline = await ctx.db.role.findFirst({
+      where: { name: "employee" },
+      select: { id: true },
+    });
+    if (baseline) {
+      await ctx.db.userRole.create({
+        data: { userId, roleId: baseline.id, assignedBy: ctx.userId },
+      });
+    }
+  }
+
   // Supersede any invite already outstanding for this account.
   await ctx.db.passwordResetToken.updateMany({
     where: { userId, usedAt: null },

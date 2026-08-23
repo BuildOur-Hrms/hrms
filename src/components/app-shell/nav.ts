@@ -29,6 +29,7 @@ export type NavIconName =
   | "company"
   | "locations"
   | "roles"
+  | "users"
   | "settings"
   | "audit";
 
@@ -159,6 +160,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/admin/locations",
         icon: "locations",
         permissions: ["company.manage"],
+      },
+      {
+        label: "Users",
+        href: "/admin/users",
+        icon: "users",
+        permissions: ["users.view_all"],
       },
       { label: "Roles", href: "/admin/roles", icon: "roles", permissions: ["roles.view_all"] },
       {

@@ -10,6 +10,7 @@ import {
   Settings,
   ShieldCheck,
   UserCircle,
+  UserCog,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -38,6 +39,7 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   company: Building2,
   locations: MapPin,
   roles: ShieldCheck,
+  users: UserCog,
   settings: Settings,
   audit: FileClock,
 };
