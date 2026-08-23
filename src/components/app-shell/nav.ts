@@ -24,6 +24,7 @@ export type NavIconName =
   | "employees"
   | "departments"
   | "shifts"
+  | "attendance"
   | "company"
   | "locations"
   | "roles"
@@ -50,7 +51,15 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "My space",
-    items: [{ label: "My profile", href: "/me/profile", icon: "profile", permissions: [] }],
+    items: [
+      { label: "My profile", href: "/me/profile", icon: "profile", permissions: [] },
+      {
+        label: "My attendance",
+        href: "/me/attendance",
+        icon: "attendance",
+        permissions: ["attendance.view_own"],
+      },
+    ],
   },
   {
     label: "Team",
