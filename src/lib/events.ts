@@ -122,6 +122,29 @@ export interface DomainEventMap {
     records: number;
   };
 
+  /// A target somebody will be measured against. Who set it, for whom, and
+  /// how heavily it counts are all things people ask about afterwards.
+  "task.created": {
+    taskId: string;
+    employeeId: string;
+    origin: "assigned" | "self";
+    title: string;
+    weight: number;
+    period: string;
+  };
+  "task.updated": {
+    taskId: string;
+    employeeId: string;
+    from: { status: string; progress: number };
+    to: { status: string; progress: number };
+  };
+  "task.deleted": {
+    taskId: string;
+    employeeId: string;
+    origin: "assigned" | "self";
+    title: string;
+  };
+
   /// Taking data out of the system is itself a sensitive action, so the
   /// export is recorded alongside the rows it copied — who, how many, and
   /// under which filters.

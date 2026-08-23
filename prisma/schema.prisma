@@ -129,6 +129,26 @@ enum AttendanceStatus {
   @@map("attendance_status")
 }
 
+/// Who put a task on somebody's list. The distinction is the whole reason
+/// the completion figure can be trusted: work the company asked for and work
+/// a person chose for themselves are not the same claim, and averaging them
+/// together would let anyone raise their own number by adding easy tasks.
+enum TaskOrigin {
+  assigned
+  self
+
+  @@map("task_origin")
+}
+
+enum TaskStatus {
+  not_started
+  in_progress
+  completed
+  cancelled
+
+  @@map("task_status")
+}
+
 enum EmployeeStatus {
   onboarding
   active
@@ -179,6 +199,7 @@ model Company {
   notifications        Notification[]
   announcements        Announcement[]
   announcementReads    AnnouncementRead[]
+  jobTasks             JobTask[]
 
   @@map("companies")
 }
@@ -292,6 +313,7 @@ model User {
   notifications        Notification[]
   announcementsWritten Announcement[]         @relation("AnnouncementAuthor")
   announcementReads    AnnouncementRead[]
+  jobTasksAuthored     JobTask[]              @relation("JobTaskAuthor")
 
   @@unique([companyId, email])
   @@index([companyId, status])
@@ -429,6 +451,7 @@ model Employee {
   leaveBalances     LeaveBalance[]
   leaveRequests     LeaveRequest[]         @relation("LeaveRequester")
   leavesToApprove   LeaveRequest[]         @relation("LeaveApprover")
+  jobTasks          JobTask[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId, status])
@@ -831,6 +854,58 @@ model AnnouncementRead {
 
   @@unique([announcementId, userId])
   @@map("announcement_reads")
+}
+
+/// A unit of work on somebody's month, with a weight and a progress figure.
+///
+/// This is Module 13's `goals` arriving early and deliberately narrowed
+/// (docs/02-modules-talent.md §Module 13). Three differences worth writing
+/// down, because they are why this is not simply that table:
+///
+///   1. `origin` — the blueprint's goals are proposed by the employee and
+///      approved by a manager. These may also be assigned outright, which is
+///      what makes them usable for measuring what the company asked for.
+///   2. `weight` is relative, not a percentage. Percentages that must total
+///      100 mean editing three rows to add a fourth, and a weighted average
+///      does not care about the scale.
+///   3. The period is a plain year and month rather than a review cycle.
+///
+/// The review half of Module 13 is still unbuilt and would sit alongside.
+model JobTask {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String     @map("company_id") @db.Uuid
+  employeeId  String     @map("employee_id") @db.Uuid
+  /// Who put it there. Null once that account is gone; `origin` still answers
+  /// the question that matters.
+  createdBy   String?    @map("created_by") @db.Uuid
+  origin      TaskOrigin @default(assigned)
+  title       String     @db.VarChar(160)
+  description String?
+  /// Relative importance, 1-100. Two tasks weighted 3 and 1 mean the first is
+  /// worth three times the second, and nothing has to add up to anything.
+  weight      Int        @default(1)
+  /// 0-100. Held separately from `status` because "in progress" says nothing
+  /// about how far in.
+  progress    Int        @default(0)
+  status      TaskStatus @default(not_started)
+  /// The month this counts towards. Denormalised rather than derived from a
+  /// due date, because a task can be worked in one month and due in the next,
+  /// and only one of those is the month it is measured in.
+  year        Int
+  month       Int
+  dueDate     DateTime?  @map("due_date") @db.Date
+  completedAt DateTime?  @map("completed_at") @db.Timestamptz(6)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  author   User?    @relation("JobTaskAuthor", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([companyId, year, month])
+  @@index([employeeId, year, month])
+  @@index([companyId, employeeId, status])
+  @@map("job_tasks")
 }
 
 model AuditLog {

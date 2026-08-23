@@ -99,6 +99,14 @@ export const SESSION_ONLY_REASONS: Record<string, string> = {
   "GET /api/v1/leave/balances": "Scope decided per employee in the service.",
   "GET /api/v1/leave/quote": "Prices your own request in days before you submit it.",
 
+  "GET /api/v1/tasks": "Own, team or company scope, decided in the service.",
+  "PATCH /api/v1/tasks/:id":
+    "Progress is the worker's; the target's shape is not. Split in the service.",
+  "DELETE /api/v1/tasks/:id":
+    "You may withdraw what you added; removing an assignment is not yours.",
+  "GET /api/v1/tasks/board": "The scope decides the permission; checked in the service.",
+  "GET /api/v1/tasks/trend": "Scope decided per employee in the service.",
+
   "GET /api/v1/reports": "The catalog, already filtered to what the caller may run.",
   "GET /api/v1/reports/:slug": "The scope decides the permission; checked in the service.",
 };

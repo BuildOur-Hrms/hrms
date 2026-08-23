@@ -99,6 +99,12 @@
 | `DELETE /api/v1/shifts/:id` | `shifts.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/shifts/:id` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `PATCH /api/v1/shifts/:id` | `shifts.manage` | ✓ | ✓ | · | · |
+| `GET /api/v1/tasks` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/tasks` | `performance.create` | ✓ | ✓ | ✓ | ✓ |
+| `DELETE /api/v1/tasks/:id` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `PATCH /api/v1/tasks/:id` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/tasks/board` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/tasks/trend` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/users` | `users.view_all` | ✓ | ✓ | · | · |
 | `DELETE /api/v1/users/:id` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/:id/disable` | `users.manage` | ✓ | ✓ | · | · |
@@ -109,4 +115,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**97 endpoints.** Permission-gated endpoints reachable per role — super_admin: 52 · hr_admin: 52 · manager: 6 · employee: 4.
+**103 endpoints.** Permission-gated endpoints reachable per role — super_admin: 53 · hr_admin: 53 · manager: 7 · employee: 5.

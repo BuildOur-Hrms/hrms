@@ -98,6 +98,26 @@ const AUDIT_MAP: {
     },
   }),
 
+  // Only the assignment side is audited. Somebody nudging their own progress
+  // bar a dozen times a week is noise, and burying the row that says "your
+  // manager set you a target" under it is how an audit trail stops being read.
+  "task.created": (p) => ({
+    entityType: "job_task",
+    entityId: p.taskId,
+    after: {
+      employeeId: p.employeeId,
+      origin: p.origin,
+      title: p.title,
+      weight: p.weight,
+      period: p.period,
+    },
+  }),
+  "task.deleted": (p) => ({
+    entityType: "job_task",
+    entityId: p.taskId,
+    before: { employeeId: p.employeeId, origin: p.origin, title: p.title },
+  }),
+
   "audit.exported": (p) => ({
     entityType: "audit_log",
     entityId: null,
