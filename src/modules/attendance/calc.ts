@@ -103,6 +103,40 @@ function weekdayOf(workDate: string): number {
   return new Date(`${workDate}T00:00:00.000Z`).getUTCDay();
 }
 
+/**
+ * Which work date a punch belongs to.
+ *
+ * For a day shift this is simply the local calendar date. For an overnight
+ * shift it is not: someone clocking out at 06:00 is finishing the shift that
+ * began the previous evening, and filing that punch under the new calendar day
+ * would split one night's work across two records — each looking like half a
+ * day to anyone reading the report.
+ *
+ * The boundary sits at the midpoint between when the shift ends and when the
+ * next one starts (14:00 for a 22:00–06:00 shift). That is symmetric, so it
+ * handles both ends of the same problem: a punch at 06:30 from someone who
+ * stayed late still belongs to last night, and a punch at 21:00 from someone
+ * arriving early belongs to tonight.
+ */
+export function resolveWorkDate(
+  punchedAt: Date,
+  timeZone: string,
+  shift: Pick<ShiftRules, "startTime" | "endTime">,
+): string {
+  const start = parseHhMm(shift.startTime);
+  const end = parseHhMm(shift.endTime);
+  const local = localDate(punchedAt, timeZone);
+
+  // Not an overnight shift: the calendar date is the work date.
+  if (end > start) return local;
+
+  const boundary = (end + start) / 2;
+  if (localMinutes(punchedAt, timeZone) >= boundary) return local;
+
+  const previous = new Date(Date.parse(`${local}T00:00:00.000Z`) - 86_400_000);
+  return previous.toISOString().slice(0, 10);
+}
+
 interface Segment {
   in: Date;
   out: Date;

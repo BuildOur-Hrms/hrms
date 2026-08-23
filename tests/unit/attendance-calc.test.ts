@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   calcAttendance,
   pairPunches,
+  resolveWorkDate,
   shiftSpanMinutes,
   type CalcInput,
   type ShiftRules,
@@ -322,5 +323,43 @@ describe("timezone handling", () => {
     expect(utc.lateMinutes).toBe(0);
     // Same worked total, different clock reading for the arrival.
     expect(kolkata.workedMinutes).toBe(utc.workedMinutes);
+  });
+});
+
+describe("resolving which day a punch belongs to", () => {
+  it("uses the calendar date for a day shift", () => {
+    expect(resolveWorkDate(at("2026-01-15", "09:00"), TZ, DAY)).toBe("2026-01-15");
+    expect(resolveWorkDate(at("2026-01-15", "18:00"), TZ, DAY)).toBe("2026-01-15");
+  });
+
+  it("files an overnight check-in under the night it started", () => {
+    expect(resolveWorkDate(at("2026-01-15", "22:00"), TZ, NIGHT)).toBe("2026-01-15");
+  });
+
+  it("files the morning check-out under the previous night", () => {
+    // The bug this prevents: one night split across two records, each looking
+    // like half a day to whoever reads the report.
+    expect(resolveWorkDate(at("2026-01-16", "06:00"), TZ, NIGHT)).toBe("2026-01-15");
+  });
+
+  it("keeps a late departure with the night it belongs to", () => {
+    expect(resolveWorkDate(at("2026-01-16", "06:30"), TZ, NIGHT)).toBe("2026-01-15");
+    expect(resolveWorkDate(at("2026-01-16", "09:00"), TZ, NIGHT)).toBe("2026-01-15");
+  });
+
+  it("gives an early arrival to the night that is about to start", () => {
+    expect(resolveWorkDate(at("2026-01-16", "21:00"), TZ, NIGHT)).toBe("2026-01-16");
+  });
+
+  it("splits at the midpoint between shift end and next start", () => {
+    // 22:00-06:00 puts the boundary at 14:00.
+    expect(resolveWorkDate(at("2026-01-16", "13:59"), TZ, NIGHT)).toBe("2026-01-15");
+    expect(resolveWorkDate(at("2026-01-16", "14:00"), TZ, NIGHT)).toBe("2026-01-16");
+  });
+
+  it("reads the clock in the employee timezone, not the server's", () => {
+    // 20:30 UTC is 02:00 next day in Kolkata — before the boundary, so it
+    // belongs to the night that started on the 15th.
+    expect(resolveWorkDate(new Date("2026-01-15T20:30:00.000Z"), TZ, NIGHT)).toBe("2026-01-15");
   });
 });
