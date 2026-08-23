@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { api } from "@/lib/api-client";
+import { ApiError, api } from "@/lib/api-client";
 import { fullName, initials } from "@/lib/utils";
 
 import type { NavSection } from "./nav";
@@ -50,12 +50,21 @@ export function Topbar({
     setSigningOut(true);
     try {
       await api.post("/auth/logout");
-      router.replace("/login");
-      router.refresh();
-    } catch {
-      toast.error("Could not sign out. Try again.");
-      setSigningOut(false);
+    } catch (error) {
+      // A 401 here means the session is already gone — expired, or revoked in
+      // another tab. That is the outcome sign-out was asking for, so treat it
+      // as success. Failing loudly would leave somebody stuck behind a dead
+      // cookie with a button that can never work.
+      const alreadySignedOut = error instanceof ApiError && error.isUnauthenticated;
+      if (!alreadySignedOut) {
+        toast.error("Could not sign out. Try again.");
+        setSigningOut(false);
+        return;
+      }
     }
+
+    router.replace("/login");
+    router.refresh();
   }
 
   return (
@@ -126,7 +135,11 @@ export function Topbar({
             My profile
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => void signOut()} disabled={signingOut}>
+          {/* `onClick`, not `onSelect`. Base UI's MenuItem has no onSelect —
+              that is Radix's API — and React quietly binds it as the DOM text
+              selection handler instead, so the item renders fine and simply
+              never fires. */}
+          <DropdownMenuItem onClick={() => void signOut()} disabled={signingOut}>
             <LogOut className="size-4" />
             Sign out
           </DropdownMenuItem>
