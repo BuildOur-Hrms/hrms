@@ -49,9 +49,7 @@ describe("what does not", () => {
 
   it("drops every attribute, which takes event handlers with it", () => {
     expect(sanitizeHtml('<p onclick="alert(1)">Hi</p>')).toBe("<p>Hi</p>");
-    expect(sanitizeHtml('<strong onmouseover="alert(1)">Hi</strong>')).toBe(
-      "<strong>Hi</strong>",
-    );
+    expect(sanitizeHtml('<strong onmouseover="alert(1)">Hi</strong>')).toBe("<strong>Hi</strong>");
   });
 
   it("keeps an image out entirely, onerror included", () => {
