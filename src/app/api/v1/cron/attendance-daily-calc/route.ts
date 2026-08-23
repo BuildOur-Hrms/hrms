@@ -1,13 +1,12 @@
-import { timingSafeEqual } from "node:crypto";
-
 import { TZDate } from "@date-fns/tz";
 import { NextResponse } from "next/server";
 
 import { bootstrap } from "@/lib/bootstrap";
 import { adminDb, withTenant } from "@/lib/db";
-import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { recomputeDayForCompany } from "@/modules/attendance/service";
+
+import { cronAuthorized } from "../authorize";
 
 export const runtime = "nodejs";
 /** Rebuilds data; must never be served from a cache. */
@@ -22,22 +21,6 @@ export const dynamic = "force-dynamic";
  * platform itself, authenticated by a shared secret.
  */
 
-function authorized(request: Request): boolean {
-  // No secret configured means the endpoint is closed, not open. A route that
-  // rebuilds every employee's attendance must never default to public.
-  if (!env.CRON_SECRET) return false;
-
-  const header = request.headers.get("authorization") ?? "";
-  const expected = `Bearer ${env.CRON_SECRET}`;
-
-  // Compare over fixed-length digests so the check cannot be timed. Raw
-  // timingSafeEqual throws on a length mismatch, which is itself a leak.
-  const a = Buffer.from(header);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
-
 /** Yesterday, in the company's own timezone rather than the server's. */
 function previousDay(timeZone: string): string {
   const nowThere = new TZDate(new Date(), timeZone);
@@ -48,7 +31,7 @@ function previousDay(timeZone: string): string {
 }
 
 export async function GET(request: Request) {
-  if (!authorized(request)) {
+  if (!cronAuthorized(request)) {
     // Deliberately identical whether the secret is wrong or simply unset.
     return NextResponse.json({ error: { code: "UNAUTHORIZED" } }, { status: 401 });
   }

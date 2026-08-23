@@ -154,11 +154,16 @@ production silently — without `QUEUE_DRIVER=inline` set, enqueueing throws and
 
 ### 3b. Scheduled jobs
 
-There is no worker process on Vercel, so the nightly attendance rebuild runs as
-a Vercel Cron hitting `/api/v1/cron/attendance-daily-calc`. The schedule lives
-in `vercel.json` and is **UTC**: `30 19 * * *` is 01:00 in Asia/Kolkata, just
-after the day it rebuilds has ended. Each company's "yesterday" is resolved in
-that company's own timezone, not the server's.
+There is no worker process on Vercel, so the scheduled jobs run as Vercel Crons.
+The schedules live in `vercel.json` and are **UTC**:
+
+| Path                                 | Schedule      | UTC means                                                   |
+| ------------------------------------ | ------------- | ----------------------------------------------------------- |
+| `/api/v1/cron/attendance-daily-calc` | `30 19 * * *` | 01:00 IST daily, just after the day it rebuilds ended       |
+| `/api/v1/cron/leave-accrual`         | `0 20 1 * *`  | 01:30 IST on the 1st; also rolls the year over each January |
+
+Each company's "yesterday" and "this month" are resolved in that company's own
+timezone, not the server's.
 
 The route is authenticated by `CRON_SECRET` alone — there is no session to
 check. Without the variable set it refuses every request rather than defaulting

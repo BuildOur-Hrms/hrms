@@ -5,6 +5,8 @@ import { logger } from "./logger";
 import { registerJobHandler } from "./queue";
 import { registerAuditSubscriber } from "@/modules/audit/service";
 import { recomputeDayForCompany } from "@/modules/attendance/service";
+import { runAccrual, runYearRollover } from "@/modules/leave/balances";
+import { getSetting } from "@/modules/settings/service";
 
 /**
  * One-time process wiring: event subscribers and job handlers.
@@ -48,6 +50,37 @@ export function bootstrap(): void {
       ),
     );
     logger.info({ ...result, companyId: payload.companyId }, "attendance daily calc complete");
+  });
+
+  // Leave accrual. Idempotent per period, so a retry credits once.
+  registerJobHandler("leave-accrual", async (payload, context) => {
+    const result = await withTenant(payload.companyId, async (db) => {
+      // The cutoff is a company setting, not a constant: a company that pays
+      // for the join month from the 1st is as legitimate as one that uses the
+      // 15th, and the accrual maths has to follow whatever they chose.
+      const cutoff = await getSetting(
+        db,
+        payload.companyId,
+        "attendance.join_mid_month_cutoff_day",
+      );
+      return runAccrual(
+        { db, companyId: payload.companyId },
+        payload.year,
+        payload.month,
+        cutoff,
+        (message, detail) => logger.warn({ ...detail, requestId: context.requestId }, message),
+      );
+    });
+    logger.info({ ...result, companyId: payload.companyId }, "leave accrual complete");
+  });
+
+  registerJobHandler("leave-year-rollover", async (payload, context) => {
+    const result = await withTenant(payload.companyId, (db) =>
+      runYearRollover({ db, companyId: payload.companyId }, payload.year, (message, detail) =>
+        logger.warn({ ...detail, requestId: context.requestId }, message),
+      ),
+    );
+    logger.info({ ...result, companyId: payload.companyId }, "leave rollover complete");
   });
 
   logger.info({ mailer: mailer.name }, "bootstrap complete");
