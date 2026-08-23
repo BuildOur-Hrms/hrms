@@ -59,6 +59,20 @@ export interface DomainEventMap {
   "org.designation_changed": { designationId: string; action: "created" | "updated" | "deleted" };
   "org.company_updated": { changedFields: string[] };
   "org.setting_changed": { key: string };
+
+  /// Shift rules and assignments both change what attendance computes, and
+  /// therefore what someone is paid — so both are audited.
+  "shift.changed": {
+    shiftId: string;
+    action: "created" | "updated" | "deleted";
+    changedFields?: string[];
+  };
+  "shift.assigned": {
+    employeeId: string;
+    shiftId: string;
+    effectiveFrom: string;
+    previousShiftId: string | null;
+  };
 }
 
 export type DomainEventName = keyof DomainEventMap;

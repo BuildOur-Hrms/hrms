@@ -21,6 +21,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
       canEdit={pageCan(session, "employee.edit")}
       canDelete={pageCan(session, "employee.delete")}
       canInvite={pageCan(session, "users.manage")}
+      canManageShifts={pageCan(session, "shifts.manage")}
     />
   );
 }

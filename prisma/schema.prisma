@@ -88,6 +88,8 @@ model Company {
   locations         Location[]
   departments       Department[]
   designations      Designation[]
+  shifts            Shift[]
+  employeeShifts    EmployeeShift[]
   users             User[]
   roles             Role[]
   employees         Employee[]
@@ -326,6 +328,7 @@ model Employee {
   directReports     Employee[]         @relation("EmployeeManager")
   headOfDepartments Department[]       @relation("DepartmentHead")
   emergencyContacts EmergencyContact[]
+  shiftAssignments  EmployeeShift[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId, status])
@@ -357,6 +360,62 @@ model EmergencyContact {
 
 /// Append-only. The app DB role holds INSERT + SELECT only (see RLS migration).
 /// No updated_at by design — audit rows are immutable.
+/// Working-time rules that attendance calculation evaluates against.
+/// docs/04-database.md §2.4.
+model Shift {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId               String    @map("company_id") @db.Uuid
+  name                    String    @db.VarChar(80)
+  code                    String    @db.VarChar(30)
+  /// Wall-clock times in the employee location's timezone, not UTC instants.
+  startTime               DateTime  @map("start_time") @db.Time(0)
+  /// May be earlier than startTime, which means the shift crosses midnight.
+  endTime                 DateTime  @map("end_time") @db.Time(0)
+  /// Lateness tolerated before a day is marked late.
+  graceMinutes            Int       @default(10) @map("grace_minutes")
+  /// Worked minutes below this mark the day half-day rather than present.
+  halfDayThresholdMinutes Int       @map("half_day_threshold_minutes")
+  /// Unpaid, deducted from worked minutes.
+  breakMinutes            Int       @default(0) @map("break_minutes")
+  /// 0=Sunday … 6=Saturday.
+  weekOffDays             Int[]     @default([0, 6]) @map("week_off_days")
+  /// New employees are assigned this one. At most one per company.
+  isDefault               Boolean   @default(false) @map("is_default")
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt               DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  company     Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  assignments EmployeeShift[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@map("shifts")
+}
+
+/// Which shift an employee is on, over time. History is preserved rather than
+/// overwritten: attendance for a past date must be recomputable against the
+/// rules that were in force on that date, not today's.
+model EmployeeShift {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String    @map("company_id") @db.Uuid
+  employeeId    String    @map("employee_id") @db.Uuid
+  shiftId       String    @map("shift_id") @db.Uuid
+  effectiveFrom DateTime  @map("effective_from") @db.Date
+  /// NULL means open-ended — the assignment in force until another supersedes it.
+  effectiveTo   DateTime? @map("effective_to") @db.Date
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shift    Shift    @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+
+  @@index([employeeId, effectiveFrom])
+  @@index([companyId])
+  @@map("employee_shifts")
+}
+
 model AuditLog {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   companyId   String   @map("company_id") @db.Uuid

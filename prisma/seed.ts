@@ -196,9 +196,30 @@ async function main() {
       update: {},
       select: { id: true },
     });
-    return { location, department, designation };
+    // A default shift so attendance has rules to evaluate against from day
+    // one, and so a new employee is never left with no shift at all.
+    // 9-to-6 with an hour unpaid break, half-day under four worked hours.
+    const shift = await db.shift.upsert({
+      where: { companyId_code: { companyId: company.id, code: "GEN" } },
+      create: {
+        companyId: company.id,
+        name: "General",
+        code: "GEN",
+        startTime: new Date(Date.UTC(1970, 0, 1, 9, 0, 0)),
+        endTime: new Date(Date.UTC(1970, 0, 1, 18, 0, 0)),
+        graceMinutes: 10,
+        halfDayThresholdMinutes: 240,
+        breakMinutes: 60,
+        weekOffDays: [0, 6],
+        isDefault: true,
+      },
+      update: {},
+      select: { id: true },
+    });
+
+    return { location, department, designation, shift };
   }, step);
-  log("org: Head Office / Administration / Administrator");
+  log("org: Head Office / Administration / Administrator / General shift");
 
   // ── 7. administrator accounts, invited (never seeded with a password)
   const roleIds = await withPlatform(

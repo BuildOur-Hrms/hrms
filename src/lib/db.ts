@@ -78,6 +78,8 @@ const TENANT_MODELS = new Set([
   "Location",
   "Department",
   "Designation",
+  "Shift",
+  "EmployeeShift",
   "User",
   "Role",
   "Employee",
@@ -94,6 +96,7 @@ const SOFT_DELETE_MODELS = new Set([
   "Location",
   "Department",
   "Designation",
+  "Shift",
   "Employee",
   "EmergencyContact",
 ]);

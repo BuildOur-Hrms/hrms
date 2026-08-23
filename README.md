@@ -6,8 +6,8 @@ The blueprint in [`docs/`](docs/README.md) is the specification. This README is
 only how to run what is built. Where the two disagree, the blueprint wins —
 except for the deviations recorded at the bottom of this file.
 
-**Current state:** Phase 1, milestones M0 (foundation) and M1 (org & employees).
-Attendance, leave and holidays are M2–M3 and not built yet.
+**Current state:** Phase 1, milestones M0 (foundation), M1 (org & employees) and
+the shifts half of M2. Attendance itself, leave and holidays are not built yet.
 
 ---
 
@@ -183,19 +183,21 @@ which is what an uptime monitor should watch.
 
 ## Commands
 
-| Command              | What it does                                        |
-| -------------------- | --------------------------------------------------- |
-| `npm run dev`        | Development server                                  |
-| `npm run build`      | Generate the Prisma client and build for production |
-| `npm run typecheck`  | `tsc --noEmit`                                      |
-| `npm run lint`       | ESLint                                              |
-| `npm run format`     | Prettier write                                      |
-| `npm test`           | Vitest unit suite                                   |
-| `npm run db:migrate` | Create and apply a migration (development)          |
-| `npm run db:deploy`  | Apply pending migrations (CI, staging, production)  |
-| `npm run db:seed`    | Idempotent seed                                     |
-| `npm run db:studio`  | Prisma Studio                                       |
-| `npm run db:doctor`  | Assert RLS, isolation and audit immutability hold   |
+| Command                     | What it does                                                     |
+| --------------------------- | ---------------------------------------------------------------- |
+| `npm run dev`               | Development server                                               |
+| `npm run build`             | Generate the Prisma client and build for production              |
+| `npm run typecheck`         | `tsc --noEmit`                                                   |
+| `npm run lint`              | ESLint                                                           |
+| `npm run format`            | Prettier write                                                   |
+| `npm test`                  | Vitest unit suite                                                |
+| `npm run db:migrate`        | Create and apply a migration (development)                       |
+| `npm run db:deploy`         | Apply pending migrations (CI, staging, production)               |
+| `npm run db:seed`           | Idempotent seed                                                  |
+| `npm run db:studio`         | Prisma Studio                                                    |
+| `npm run db:doctor`         | Assert RLS, isolation and audit immutability hold                |
+| `npm run db:remove-demo`    | Remove the seeded demo org (dry run without `-- --apply`)        |
+| `npm run db:rename-company` | Rename the company, slug included (dry run without `-- --apply`) |
 
 ---
 
@@ -302,8 +304,14 @@ Each of these was a forced choice, not a preference:
 
 ## What is not built yet
 
-Phase 1 milestones M2 onward: shifts, attendance (punches, nightly calculation,
-corrections, month locks), leave (types, policies, balances, accruals,
-requests), holidays, notifications, dashboards beyond headcount, and the
-integration / permission-matrix / e2e test suites. Build order is
+Phase 1 milestones M2 onward, minus shifts: attendance (punches, nightly
+calculation, corrections, month locks), leave (types, policies, balances,
+accruals, requests), holidays, notifications, dashboards beyond headcount, and
+the integration / permission-matrix / e2e test suites. Build order is
 `docs/10-roadmap-testing-deployment.md` §6.
+
+Shift definitions and assignment history landed ahead of the rest of M2,
+because attendance cannot be calculated without knowing which rules were in
+force on a date. `EmployeeShift` is append-and-close rather than editable for
+the same reason: recomputing a past month has to use the shift that applied
+then, not the one that applies now.

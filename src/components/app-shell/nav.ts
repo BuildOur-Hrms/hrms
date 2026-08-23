@@ -23,6 +23,7 @@ export type NavIconName =
   | "team"
   | "employees"
   | "departments"
+  | "shifts"
   | "company"
   | "locations"
   | "roles"
@@ -77,6 +78,12 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: "departments",
         permissions: ["department.manage", "designation.manage"],
       },
+      {
+        label: "Shifts",
+        href: "/hr/shifts",
+        icon: "shifts",
+        permissions: ["shifts.manage"],
+      },
     ],
   },
   {
@@ -116,7 +123,7 @@ export const NAV_SECTIONS: NavSection[] = [
  * in one place rather than scattered across future commits.
  */
 export const PLANNED_NAV: { label: string; milestone: string }[] = [
-  { label: "Attendance", milestone: "M2" },
+  { label: "Attendance", milestone: "M2 (shifts done)" },
   { label: "Leave", milestone: "M3" },
   { label: "Holidays", milestone: "M3" },
   { label: "Notifications", milestone: "M4" },

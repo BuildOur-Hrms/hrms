@@ -37,6 +37,8 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import { ShiftAssignment } from "./shift-assignment";
 import {
   employeeKeys,
   useChangeEmployeeStatus,
@@ -100,11 +102,13 @@ export function EmployeeDetail({
   canEdit,
   canDelete,
   canInvite,
+  canManageShifts,
 }: {
   id: string;
   canEdit: boolean;
   canDelete: boolean;
   canInvite: boolean;
+  canManageShifts: boolean;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -257,7 +261,7 @@ export function EmployeeDetail({
           ) : null}
         </TabsContent>
 
-        <TabsContent value="employment" className="mt-4">
+        <TabsContent value="employment" className="mt-4 space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Employment</CardTitle>
@@ -288,6 +292,8 @@ export function EmployeeDetail({
               />
             </CardContent>
           </Card>
+
+          <ShiftAssignment employeeId={id} canManage={canManageShifts} />
         </TabsContent>
 
         {canSeePersonal ? (
