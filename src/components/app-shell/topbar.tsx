@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Menu, Moon, Sun, UserCircle } from "lucide-react";
+import { ChevronDown, LogOut, Menu, Moon, Sun, UserCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -96,13 +96,19 @@ export function Topbar({
       </Button>
 
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" className="gap-2 px-2" />}>
+        <DropdownMenuTrigger
+          render={<Button variant="ghost" className="gap-1.5 px-2" aria-label="Account menu" />}
+        >
           <Avatar className="size-7">
             <AvatarFallback className="text-xs">
               {initials(firstName ?? email, lastName)}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden max-w-40 truncate text-sm sm:inline">{display}</span>
+          {/* The name is worth the width even on a phone: an unlabelled circle
+              does not read as "this is you, and sign-out lives here". */}
+          <span className="max-w-24 truncate text-sm sm:max-w-40">{display}</span>
+          {/* And a chevron, so it reads as a menu rather than an avatar. */}
+          <ChevronDown className="text-muted-foreground size-3.5" aria-hidden />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">
           <DropdownMenuLabel className="font-normal">
