@@ -70,6 +70,12 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: "team",
         permissions: ["employee.view_team"],
       },
+      {
+        label: "Team attendance",
+        href: "/team/attendance",
+        icon: "attendance",
+        permissions: ["attendance.view_team"],
+      },
     ],
   },
   {

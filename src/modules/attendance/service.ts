@@ -505,3 +505,72 @@ export async function recomputeDayForCompany(
 
   return { workDate, processed, needsReview, absent };
 }
+
+/**
+ * One day across a set of people, for the team and company grids.
+ *
+ * Every employee employed on that date appears, with or without a record.
+ * A manager checking whether the team is in needs to see the person whose day
+ * has not been calculated yet — omitting them would read as "nobody missing".
+ */
+export async function listDayForScope(ctx: RequestContext, date: string, scope: "team" | "all") {
+  if (scope === "all") {
+    if (!ctx.permissions.has("attendance.view_all") && !ctx.permissions.has("attendance.manage")) {
+      throw new ForbiddenError("You cannot see company-wide attendance");
+    }
+  } else if (!ctx.permissions.has("attendance.view_team")) {
+    throw new ForbiddenError("You cannot see team attendance");
+  }
+
+  const workDate = toDateOnly(date);
+
+  const employees = await ctx.db.employee.findMany({
+    where: {
+      joinDate: { lte: workDate },
+      OR: [{ exitDate: null }, { exitDate: { gte: workDate } }],
+      ...(scope === "team"
+        ? { managerId: ctx.employeeId ?? "00000000-0000-0000-0000-000000000000" }
+        : {}),
+    },
+    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+    take: 500,
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      employeeCode: true,
+      department: { select: { name: true } },
+    },
+  });
+
+  const records = await ctx.db.attendanceRecord.findMany({
+    where: { workDate, employeeId: { in: employees.map((e) => e.id) } },
+    select: {
+      employeeId: true,
+      status: true,
+      firstIn: true,
+      lastOut: true,
+      workedMinutes: true,
+      lateMinutes: true,
+      overtimeMinutes: true,
+      needsReview: true,
+      locked: true,
+    },
+  });
+
+  const byEmployee = new Map(records.map((r) => [r.employeeId, r]));
+
+  return {
+    date,
+    rows: employees.map((employee) => ({
+      employee: {
+        id: employee.id,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        employeeCode: employee.employeeCode,
+        department: employee.department?.name ?? null,
+      },
+      record: byEmployee.get(employee.id) ?? null,
+    })),
+  };
+}

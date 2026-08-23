@@ -103,3 +103,9 @@ export const lockActionSchema = z.object({
   note: z.string().trim().max(500).nullish(),
 });
 export type LockActionInput = z.infer<typeof lockActionSchema>;
+
+export const overviewQuerySchema = z.object({
+  date: dateOnlySchema,
+  scope: z.enum(["team", "all"]).default("team"),
+});
+export type OverviewQueryInput = z.infer<typeof overviewQuerySchema>;
