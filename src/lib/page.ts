@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 import { authenticate } from "./context";
 import { withTenant } from "./db";
@@ -30,8 +31,19 @@ export interface PageSession {
   company: { id: string; name: string; slug: string; timezone: string; currency: string };
 }
 
-/** Redirects to the login screen when there is no usable session. */
-export async function requireSession(): Promise<PageSession> {
+/**
+ * Redirects to the login screen when there is no usable session.
+ *
+ * Wrapped in React's `cache` because the authenticated shell calls this and so
+ * does every page inside it — Next renders both in the same pass, so without
+ * memoisation each page load resolved the session twice, as two separate
+ * transactions. That is ten database round trips where five will do, and it is
+ * paid on every single navigation.
+ *
+ * `cache` is scoped to one render pass, so this never leaks a session between
+ * requests: a second request gets its own empty cache and re-reads the cookie.
+ */
+export const requireSession = cache(async function requireSession(): Promise<PageSession> {
   const store = await cookies();
   const claims = await readSessionToken(store.get(SESSION_COOKIE_NAME)?.value);
   if (!claims) redirect("/login");
@@ -64,7 +76,7 @@ export async function requireSession(): Promise<PageSession> {
     if (isRedirectError(error)) throw error;
     redirect("/login");
   }
-}
+});
 
 function isRedirectError(error: unknown): boolean {
   return (
