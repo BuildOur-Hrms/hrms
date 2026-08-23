@@ -17,9 +17,14 @@
 #                         verifying row-level security over the migration
 #                         connection proves nothing: that role owns the tables.
 #
-# Optional repository variable:
+# Optional repository variables:
 #   APP_URL               the deployment URL, so seeded invite links are
 #                         clickable rather than pointing at localhost.
+#   SEED_COMPANY_NAME     the real company name. Without it the seed resets
+#                         the name to "Acme Corp" on every run.
+#   SEED_COMPANY_SLUG     the upsert key for the company row. Only change this
+#                         alongside the database, or the next seed creates a
+#                         second company instead of updating the existing one.
 
 name: Database
 
@@ -36,6 +41,7 @@ on:
           - migrate
           - migrate-and-seed
           - seed
+          - remove-demo
           - create-app-role
       seed_demo:
         description: Also insert the demo organisation (never for production)
@@ -60,6 +66,13 @@ jobs:
       DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
       DIRECT_DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
       APP_URL: ${{ vars.APP_URL || 'http://localhost:3000' }}
+      # The seed's upsert is `update: { name: SEED_COMPANY_NAME }`, keyed on
+      # SEED_COMPANY_SLUG. Left unset these default to "Acme Corp"/"acme", so
+      # every run would overwrite the real company name with the placeholder.
+      # The slug is the upsert key: change it and the next seed creates a
+      # SECOND company rather than updating this one.
+      SEED_COMPANY_NAME: ${{ vars.SEED_COMPANY_NAME || 'Acme Corp' }}
+      SEED_COMPANY_SLUG: ${{ vars.SEED_COMPANY_SLUG || 'acme' }}
       # The seed mints no sessions, so this only has to satisfy the env schema.
       AUTH_SECRET: ci-database-job-placeholder-not-used-for-sessions
       EMAIL_PROVIDER: console
@@ -103,6 +116,10 @@ jobs:
         run: |
           npm run db:seed
           echo "::notice::Invite links are in the log above. They are single-use and expire in 7 days."
+
+      - name: Remove the demo organisation
+        if: inputs.action == 'remove-demo'
+        run: npm run db:remove-demo -- --apply
 
       - name: Verify
         if: inputs.action != 'create-app-role'

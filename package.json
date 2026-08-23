@@ -20,7 +20,8 @@
     "db:reset": "prisma migrate reset",
     "db:doctor": "tsx scripts/db-doctor.ts",
     "db:local": "tsx scripts/local-db.ts",
-    "db:role": "tsx scripts/create-app-role.ts"
+    "db:role": "tsx scripts/create-app-role.ts",
+    "db:remove-demo": "tsx scripts/remove-demo-org.ts"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
