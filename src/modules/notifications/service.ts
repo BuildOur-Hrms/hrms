@@ -1,6 +1,7 @@
 import type { RequestContext } from "@/lib/context";
 import { ConflictError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
+import type { PermissionCode } from "@/lib/permissions";
 
 /**
  * In-app notifications and HR announcements.
@@ -67,6 +68,28 @@ export async function userIdForEmployee(
     select: { userId: true },
   });
   return employee?.userId ?? null;
+}
+
+/**
+ * Everyone who holds a permission, for the notices addressed to a role rather
+ * than a person ("all HR users", "the people who can approve this").
+ *
+ * Resolved through the permission, never through a role name, for the same
+ * reason feature code is: a custom role in Phase 3 that carries
+ * `leave.view_all` should start receiving HR notices without a code change.
+ */
+export async function userIdsWithPermission(
+  ctx: DataContext,
+  code: PermissionCode,
+): Promise<string[]> {
+  const users = await ctx.db.user.findMany({
+    where: {
+      status: "active",
+      userRoles: { some: { role: { rolePermissions: { some: { permission: { code } } } } } },
+    },
+    select: { id: true },
+  });
+  return users.map((user) => user.id);
 }
 
 /** Whoever should decide on this employee's requests. */

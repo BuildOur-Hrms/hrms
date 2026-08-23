@@ -9,6 +9,10 @@
     {
       "path": "/api/v1/cron/leave-accrual",
       "schedule": "0 20 1 * *"
+    },
+    {
+      "path": "/api/v1/cron/daily-notices",
+      "schedule": "30 2 * * *"
     }
   ]
 }
