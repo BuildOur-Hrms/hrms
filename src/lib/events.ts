@@ -122,6 +122,35 @@ export interface DomainEventMap {
   /// A policy revision overwrites rather than versions, so the audit entry is
   /// the only record that the rules used to say something else.
   "leave.policy_changed": { leaveTypeId: string; action: "created" | "updated" };
+  /// The reason is carried into the audit deliberately: an unexplained
+  /// adjustment is indistinguishable from a mistake six months later.
+  "leave.balance_adjusted": {
+    employeeId: string;
+    leaveTypeId: string;
+    year: number;
+    days: number;
+    reason: string;
+  };
+
+  "leave.requested": {
+    employeeId: string;
+    requestId: string;
+    leaveTypeId: string;
+    startDate: string;
+    endDate: string;
+    days: number;
+  };
+  /// The balance moves on this decision, so the day count moves with it into
+  /// the audit trail.
+  "leave.reviewed": {
+    employeeId: string;
+    requestId: string;
+    decision: "approved" | "rejected";
+    days: number;
+  };
+  /// `restored` is zero unless the request had been approved - only an
+  /// approved request had taken days out of the balance to put back.
+  "leave.cancelled": { employeeId: string; requestId: string; restored: number };
 }
 
 export type DomainEventName = keyof DomainEventMap;
