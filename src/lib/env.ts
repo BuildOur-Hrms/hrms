@@ -35,6 +35,16 @@ const schema = z.object({
   EMAIL_PROVIDER: z.enum(["console", "smtp", "resend"]).default("console"),
   EMAIL_FROM: z.string().default("HRMS <no-reply@example.com>"),
   SMTP_URL: z.string().optional(),
+
+  /**
+   * Connection-pool ceiling, per process.
+   *
+   * Defaults are chosen for the host shape (see src/lib/db.ts). Override when
+   * the database has a lower ceiling than the app assumes — a small managed
+   * plan, a pooler with a tight limit, or a local PGlite, which serialises
+   * everything through one thread and folds under a pool sized for a server.
+   */
+  DB_POOL_MAX: z.coerce.number().int().min(1).max(100).optional(),
   RESEND_API_KEY: z.string().optional(),
 
   /**

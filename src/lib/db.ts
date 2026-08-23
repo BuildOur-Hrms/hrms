@@ -33,7 +33,7 @@ import { env, isProd, isServerless } from "./env";
  */
 const adapter = new PrismaPg({
   connectionString: env.DATABASE_URL,
-  max: isServerless ? 3 : isProd ? 10 : 5,
+  max: env.DB_POOL_MAX ?? (isServerless ? 3 : isProd ? 10 : 5),
   connectionTimeoutMillis: 5_000,
   idleTimeoutMillis: isServerless ? 10_000 : 30_000,
 });

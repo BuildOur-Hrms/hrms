@@ -4,6 +4,16 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
 
   /**
+   * Build output directory, overridable so a second server can run alongside
+   * the dev one.
+   *
+   * Two Next processes sharing `.next` fight over it, and the loser serves a
+   * half-written build — which looks exactly like a broken app. The browser
+   * tests start their own server, so they get their own directory.
+   */
+  distDir: process.env["NEXT_DIST_DIR"] ?? ".next",
+
+  /**
    * Native or Node-only packages that must be `require`d at runtime rather
    * than bundled: native bindings (argon2), transport-spawning loggers (pino),
    * and libraries reaching for `child_process`/`net` (BullMQ, ioredis, pg).

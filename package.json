@@ -26,6 +26,8 @@
     "db:rename-company": "tsx scripts/rename-company.ts",
     "matrix": "tsx scripts/permission-matrix.ts",
     "db:seed-load": "tsx scripts/seed-load.ts",
+    "db:seed-e2e": "tsx scripts/seed-e2e.ts",
+    "test:e2e": "playwright test",
     "bench": "tsx scripts/bench.ts"
   },
   "dependencies": {
@@ -68,6 +70,7 @@
     "@electric-sql/pglite": "^0.5.6",
     "@electric-sql/pglite-socket": "^0.2.9",
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.1",
