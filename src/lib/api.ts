@@ -58,11 +58,17 @@ const LIST_MARKER = Symbol("hrms.list");
 interface ListResult<T> {
   [LIST_MARKER]: true;
   data: T[];
-  meta: ListMeta;
+  meta: ListMeta & Record<string, unknown>;
 }
 
-/** Wrap a page of rows so `withApi` emits `{ data, meta }`. */
-export function list<T>(data: T[], meta: ListMeta): ListResult<T> {
+/**
+ * Wrap a page of rows so `withApi` emits `{ data, meta }`.
+ *
+ * `meta` may carry more than the paging triple — reports add their column set
+ * and KPIs there, which is the difference between describing the page and
+ * describing the result.
+ */
+export function list<T>(data: T[], meta: ListMeta & Record<string, unknown>): ListResult<T> {
   return { [LIST_MARKER]: true, data, meta };
 }
 
