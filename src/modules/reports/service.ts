@@ -2,6 +2,7 @@ import type { RequestContext } from "@/lib/context";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { resolveScope } from "@/lib/permissions";
 
+import { absences, attendanceSummary, lateArrivals } from "./attendance";
 import { auditActivity } from "./audit-activity";
 import { reportBySlug, visibleReports, type ReportColumn, type ReportDefinition } from "./catalog";
 import { headcount } from "./headcount";
@@ -18,8 +19,14 @@ import type { ReportQueryInput, ReportScope } from "./validators";
 
 const RUNNERS: Record<string, ReportRunner> = {
   headcount,
+  "attendance-summary": attendanceSummary,
+  absences,
+  "late-arrivals": lateArrivals,
   "audit-activity": auditActivity,
 };
+
+/** Slugs the dispatcher can run. The catalog must line up with this exactly. */
+export const RUNNABLE_SLUGS: readonly string[] = Object.keys(RUNNERS);
 
 export interface ReportRun {
   data: ReportRow[];

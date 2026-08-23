@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import type { RequestContext } from "@/lib/context";
 import { ForbiddenError } from "@/lib/errors";
 import type { PermissionCode } from "@/lib/permissions";
+import { blankTally, presenceRate } from "@/modules/reports/attendance";
 import { REPORTS, reportBySlug, visibleReports } from "@/modules/reports/catalog";
 import { employeeScopeWhere, resolveReportScope } from "@/modules/reports/runner";
+import { RUNNABLE_SLUGS } from "@/modules/reports/service";
 
 /**
  * The catalog is the contract between the screen, the endpoint and the runner.
@@ -22,6 +24,10 @@ describe("report catalog", () => {
   it("has a unique id and slug per report", () => {
     expect(new Set(REPORTS.map((r) => r.id)).size).toBe(REPORTS.length);
     expect(new Set(REPORTS.map((r) => r.slug)).size).toBe(REPORTS.length);
+  });
+
+  it("has a runner for every catalog entry, and nothing spare", () => {
+    expect(REPORTS.map((r) => r.slug).sort()).toEqual([...RUNNABLE_SLUGS].sort());
   });
 
   it("gives every report at least one column", () => {
@@ -89,5 +95,25 @@ describe("report scope", () => {
     expect(employeeScopeWhere(ctx(["reports.view_team"], null), "team")).toEqual({
       managerId: "00000000-0000-0000-0000-000000000000",
     });
+  });
+});
+
+describe("presence rate", () => {
+  const tally = (parts: Partial<ReturnType<typeof blankTally>>) => ({ ...blankTally(), ...parts });
+
+  it("counts a half day as half a day present", () => {
+    expect(presenceRate(tally({ present: 1, half_day: 1 }))).toBe(75);
+  });
+
+  it("leaves holidays and week-offs out of the denominator", () => {
+    expect(presenceRate(tally({ present: 20, holiday: 2, week_off: 8 }))).toBe(100);
+  });
+
+  it("counts an approved leave day as a day that was expected", () => {
+    expect(presenceRate(tally({ present: 18, on_leave: 2 }))).toBe(90);
+  });
+
+  it("is zero rather than NaN for a month with nothing recorded", () => {
+    expect(presenceRate(blankTally())).toBe(0);
   });
 });
