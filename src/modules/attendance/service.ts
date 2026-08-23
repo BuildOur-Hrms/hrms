@@ -320,3 +320,87 @@ export async function getDay(ctx: RequestContext, employeeId: string, date?: str
     checkedIn: openPunch,
   };
 }
+
+/**
+ * A month of days for one employee, for the calendar view.
+ *
+ * Days with no record come back as `null` rather than `absent`. The nightly
+ * job is what turns "nobody punched" into "absent", and until it has run for a
+ * date, claiming absence would be a guess — an alarming one, on a day that has
+ * not happened yet. The week-off flag is derived from the shift instead, since
+ * that is knowable without any job having run.
+ */
+export async function getMonth(
+  ctx: RequestContext,
+  employeeId: string,
+  year: number,
+  month: number,
+) {
+  await assertCanViewAttendance(ctx, employeeId);
+
+  const first = new Date(Date.UTC(year, month - 1, 1));
+  const afterLast = new Date(Date.UTC(year, month, 1));
+  const dayCount = Math.round((afterLast.getTime() - first.getTime()) / 86_400_000);
+
+  const [records, shift] = await Promise.all([
+    ctx.db.attendanceRecord.findMany({
+      where: { employeeId, workDate: { gte: first, lt: afterLast } },
+      orderBy: { workDate: "asc" },
+      select: {
+        workDate: true,
+        status: true,
+        firstIn: true,
+        lastOut: true,
+        workedMinutes: true,
+        lateMinutes: true,
+        overtimeMinutes: true,
+        overtimeApproved: true,
+        needsReview: true,
+        locked: true,
+      },
+    }),
+    // One shift for the whole month is an approximation: someone reassigned
+    // mid-month has two. It only drives which cells are shaded as week-offs,
+    // and the stored record always wins where one exists.
+    effectiveShift(ctx, employeeId, first),
+  ]);
+
+  const byDate = new Map(records.map((r) => [isoDate(r.workDate), r]));
+  const weekOffDays = shift?.weekOffDays ?? [];
+
+  const days = Array.from({ length: dayCount }, (_, i) => {
+    const date = new Date(first.getTime() + i * 86_400_000);
+    const key = isoDate(date);
+    const record = byDate.get(key);
+    return {
+      date: key,
+      weekOff: weekOffDays.includes(date.getUTCDay()),
+      record: record
+        ? {
+            status: record.status,
+            firstIn: record.firstIn,
+            lastOut: record.lastOut,
+            workedMinutes: record.workedMinutes,
+            lateMinutes: record.lateMinutes,
+            overtimeMinutes: record.overtimeMinutes,
+            overtimeApproved: record.overtimeApproved,
+            needsReview: record.needsReview,
+            locked: record.locked,
+          }
+        : null,
+    };
+  });
+
+  const summary = {
+    present: records.filter((r) => r.status === "present").length,
+    halfDay: records.filter((r) => r.status === "half_day").length,
+    absent: records.filter((r) => r.status === "absent").length,
+    onLeave: records.filter((r) => r.status === "on_leave").length,
+    workedMinutes: records.reduce((t, r) => t + r.workedMinutes, 0),
+    lateMinutes: records.reduce((t, r) => t + r.lateMinutes, 0),
+    overtimeMinutes: records.reduce((t, r) => t + r.overtimeMinutes, 0),
+    needsReview: records.filter((r) => r.needsReview).length,
+  };
+
+  return { year, month, days, summary };
+}

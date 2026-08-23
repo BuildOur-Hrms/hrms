@@ -31,4 +31,15 @@ export const dayQuerySchema = z.object({
 });
 export type DayQueryInput = z.infer<typeof dayQuerySchema>;
 
+/**
+ * A calendar month. The year floor is not arbitrary — it rejects the `0` that
+ * arrives when a client sends an empty string, which would otherwise query
+ * two thousand years of empty days.
+ */
+export const monthQuerySchema = z.object({
+  year: z.coerce.number().int().min(2000).max(2100),
+  month: z.coerce.number().int().min(1).max(12),
+});
+export type MonthQueryInput = z.infer<typeof monthQuerySchema>;
+
 export const idParamSchema = z.object({ id: z.string().uuid() });
