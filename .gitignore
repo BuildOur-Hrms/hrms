@@ -59,3 +59,6 @@ next-env.d.ts
 # playwright output
 /test-results/
 /playwright-report/
+
+# local file storage (development driver)
+/.storage/

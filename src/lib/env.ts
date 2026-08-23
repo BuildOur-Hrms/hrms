@@ -27,7 +27,17 @@ const schema = z.object({
    */
   QUEUE_DRIVER: z.enum(["auto", "inline"]).default("auto"),
 
+  /**
+   * Where uploaded files go. `local` writes under `.storage/` and is for
+   * development only — it warns loudly if it finds itself in production,
+   * because those files do not survive a deploy.
+   */
+  STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
   S3_ENDPOINT: z.string().optional(),
+  /** `auto` suits R2 and MinIO; AWS wants the real region. */
+  S3_REGION: z.string().optional(),
+  /** MinIO needs path-style addressing; AWS accepts it. */
+  S3_PATH_STYLE: z.coerce.boolean().optional(),
   S3_BUCKET: z.string().optional(),
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
