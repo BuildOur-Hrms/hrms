@@ -153,10 +153,22 @@ production silently — without `QUEUE_DRIVER=inline` set, enqueueing throws and
 
 ### 4. Region
 
-Put the functions in the same region as the Supabase project
-(**Settings → Functions → Function Region**). Every request opens a transaction
-and does several round trips inside it; a cross-continent hop turns a 40 ms page
-into a 400 ms one.
+Functions must run in the same region as the Supabase project. Every request
+opens a transaction and does several round trips inside it, so a cross-continent
+hop turns a 40 ms page into a 400 ms one.
+
+This is pinned in `vercel.json` rather than left to the dashboard, because the
+default (`iad1`, Washington) is nowhere near the database and nothing about a
+slow page says why:
+
+```json
+{ "regions": ["sin1"] }
+```
+
+`sin1` is Singapore, matching the Supabase project on
+`aws-0-ap-southeast-1.pooler.supabase.com`. **Move the database and this has to
+move with it** — the two are a pair, and a mismatch is invisible until someone
+complains that the app feels slow.
 
 ### 5. Check it
 
