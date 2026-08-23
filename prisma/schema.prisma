@@ -76,6 +76,32 @@ enum AttendanceSource {
   @@map("attendance_source")
 }
 
+enum AccrualFrequency {
+  monthly
+  yearly
+  none
+
+  @@map("accrual_frequency")
+}
+
+/// Half-day leave is only meaningful on a single-day request.
+enum HalfDayPart {
+  none
+  first_half
+  second_half
+
+  @@map("half_day_part")
+}
+
+enum LeaveRequestStatus {
+  pending
+  approved
+  rejected
+  cancelled
+
+  @@map("leave_request_status")
+}
+
 enum CorrectionStatus {
   pending
   approved
@@ -138,6 +164,11 @@ model Company {
   systemSettings       SystemSetting[]
   auditLogs            AuditLog[]
   attendanceMonthLocks AttendanceMonthLock[]
+  holidays             Holiday[]
+  leaveTypes           LeaveType[]
+  leavePolicies        LeavePolicy[]
+  leaveBalances        LeaveBalance[]
+  leaveRequests        LeaveRequest[]
 
   @@map("companies")
 }
@@ -156,6 +187,7 @@ model Location {
 
   company   Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
   employees Employee[]
+  holidays  Holiday[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -245,6 +277,7 @@ model User {
   overtimeApproved    AttendanceRecord[]     @relation("OvertimeApprovedBy")
   correctionsReviewed AttendanceCorrection[] @relation("CorrectionReviewedBy")
   monthLocks          AttendanceMonthLock[]  @relation("MonthLockedBy")
+  leavesReviewed      LeaveRequest[]         @relation("LeaveReviewedBy")
 
   @@unique([companyId, email])
   @@index([companyId, status])
@@ -379,6 +412,9 @@ model Employee {
   attendance        AttendanceRecord[]
   corrections       AttendanceCorrection[]
   monthLocks        AttendanceMonthLock[]
+  leaveBalances     LeaveBalance[]
+  leaveRequests     LeaveRequest[]         @relation("LeaveRequester")
+  leavesToApprove   LeaveRequest[]         @relation("LeaveApprover")
 
   @@unique([companyId, employeeCode])
   @@index([companyId, status])
@@ -579,6 +615,142 @@ model AttendanceMonthLock {
 
   @@unique([companyId, year, month])
   @@map("attendance_month_locks")
+}
+
+/// Company holiday calendar. A row with no location applies company-wide;
+/// one with a location applies only there, which is how a company with
+/// offices in two states keeps two different calendars.
+model Holiday {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  locationId  String?  @map("location_id") @db.Uuid
+  name        String   @db.VarChar(120)
+  holidayDate DateTime @map("holiday_date") @db.Date
+  isOptional  Boolean  @default(false) @map("is_optional")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  location Location? @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, locationId, holidayDate, name])
+  @@index([companyId, holidayDate])
+  @@map("holidays")
+}
+
+model LeaveType {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId          String    @map("company_id") @db.Uuid
+  name               String    @db.VarChar(80)
+  code               String    @db.VarChar(20)
+  /// Unpaid leave still consumes a balance; it just does not pay.
+  isPaid             Boolean   @default(true) @map("is_paid")
+  color              String?   @db.VarChar(9)
+  requiresAttachment Boolean   @default(false) @map("requires_attachment")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  company  Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  policy   LeavePolicy?
+  balances LeaveBalance[]
+  requests LeaveRequest[]
+
+  @@unique([companyId, code])
+  @@map("leave_types")
+}
+
+/// One policy per type. A revision overwrites and is audited rather than
+/// versioned: a balance already accrued under the old rules is a number, not
+/// a rule, so it stays correct without the old rule being kept around.
+model LeavePolicy {
+  id                       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId                String           @map("company_id") @db.Uuid
+  leaveTypeId              String           @unique @map("leave_type_id") @db.Uuid
+  accrualFrequency         AccrualFrequency @default(none) @map("accrual_frequency")
+  accrualAmount            Decimal          @default(0) @map("accrual_amount") @db.Decimal(5, 2)
+  maxCarryForward          Decimal          @default(0) @map("max_carry_forward") @db.Decimal(5, 2)
+  /// How far below zero a balance may go. Default 0 means never.
+  maxNegative              Decimal          @default(0) @map("max_negative") @db.Decimal(5, 2)
+  minNoticeDays            Int              @default(0) @map("min_notice_days")
+  maxConsecutiveDays       Int?             @map("max_consecutive_days")
+  applicableAfterProbation Boolean          @default(false) @map("applicable_after_probation")
+  /// When on, holidays and week-offs *inside* a leave span count as leave.
+  /// Adjacent ones never do, which is the whole subtlety of the rule.
+  sandwichRule             Boolean          @default(false) @map("sandwich_rule")
+  createdAt                DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+
+  @@map("leave_policies")
+}
+
+/// Per employee, per type, per year.
+///
+/// `current` is deliberately not a column. It is opening + accrued +
+/// carriedForward + adjusted - used, and computing it on read means the parts
+/// and the total can never disagree, which they eventually will if both are
+/// stored and two code paths write them.
+model LeaveBalance {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  employeeId     String   @map("employee_id") @db.Uuid
+  leaveTypeId    String   @map("leave_type_id") @db.Uuid
+  year           Int
+  opening        Decimal  @default(0) @db.Decimal(5, 2)
+  accrued        Decimal  @default(0) @db.Decimal(5, 2)
+  used           Decimal  @default(0) @db.Decimal(5, 2)
+  carriedForward Decimal  @default(0) @map("carried_forward") @db.Decimal(5, 2)
+  /// Manual HR credit or debit, always with a reason in the audit log.
+  adjusted       Decimal  @default(0) @db.Decimal(5, 2)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+
+  @@unique([companyId, employeeId, leaveTypeId, year])
+  @@index([employeeId, year])
+  @@map("leave_balances")
+}
+
+model LeaveRequest {
+  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String             @map("company_id") @db.Uuid
+  employeeId    String             @map("employee_id") @db.Uuid
+  leaveTypeId   String             @map("leave_type_id") @db.Uuid
+  startDate     DateTime           @map("start_date") @db.Date
+  endDate       DateTime           @map("end_date") @db.Date
+  halfDay       HalfDayPart        @default(none) @map("half_day")
+  /// Working days the request actually costs, computed at submit and frozen.
+  /// Recomputing it later would let a holiday added afterwards silently
+  /// change what someone already had approved.
+  days          Decimal            @db.Decimal(4, 2)
+  reason        String
+  attachmentKey String?            @map("attachment_key") @db.VarChar(255)
+  status        LeaveRequestStatus @default(pending)
+  /// The manager resolved at submit time, so a later reorg does not move a
+  /// pending request to somebody who never saw it.
+  approverId    String?            @map("approver_id") @db.Uuid
+  reviewedBy    String?            @map("reviewed_by") @db.Uuid
+  reviewedAt    DateTime?          @map("reviewed_at") @db.Timestamptz(6)
+  reviewNote    String?            @map("review_note")
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee  Employee  @relation("LeaveRequester", fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+  approver  Employee? @relation("LeaveApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  reviewer  User?     @relation("LeaveReviewedBy", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@index([employeeId, startDate])
+  @@index([approverId, status])
+  @@map("leave_requests")
 }
 
 model AuditLog {
