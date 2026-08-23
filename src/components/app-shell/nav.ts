@@ -53,6 +53,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "My space",
     items: [
+      { label: "Overview", href: "/me", icon: "home", permissions: [] },
       { label: "My profile", href: "/me/profile", icon: "profile", permissions: [] },
       {
         label: "My attendance",
@@ -95,6 +96,12 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "People",
     items: [
       {
+        label: "HR overview",
+        href: "/hr",
+        icon: "home",
+        permissions: ["employee.view_all"],
+      },
+      {
         label: "Employees",
         href: "/hr/employees",
         icon: "employees",
@@ -129,6 +136,18 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Administration",
     items: [
+      {
+        label: "Overview",
+        href: "/admin",
+        icon: "home",
+        permissions: [
+          "users.view_all",
+          "roles.view_all",
+          "company.manage",
+          "settings.manage",
+          "audit.view_all",
+        ],
+      },
       {
         label: "Company",
         href: "/admin/company",
