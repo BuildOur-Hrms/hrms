@@ -5,6 +5,7 @@ import { NoAccess } from "@/components/shared/no-access";
 import { PageHeader } from "@/components/shared/page-header";
 import { pageCan, requireSession } from "@/lib/page";
 
+import { AdjustBalancePanel } from "./adjust-balance-panel";
 import { HolidaysPanel } from "./holidays-panel";
 import { TypesPanel } from "./types-panel";
 
@@ -32,6 +33,7 @@ export default async function HrLeavePage() {
       <div className="space-y-4">
         {pageCan(session, "leave.approve") ? <LeaveQueue scope="all" /> : null}
         {canSeeAll || canManageLeave ? <TypesPanel canManage={canManageLeave} /> : null}
+        {canManageLeave ? <AdjustBalancePanel /> : null}
         <HolidaysPanel canManage={canManageHolidays} />
       </div>
     </>
