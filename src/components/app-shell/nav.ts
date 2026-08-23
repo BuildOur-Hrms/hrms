@@ -94,6 +94,12 @@ export const NAV_SECTIONS: NavSection[] = [
         permissions: ["department.manage", "designation.manage"],
       },
       {
+        label: "Attendance",
+        href: "/hr/attendance",
+        icon: "attendance",
+        permissions: ["attendance.view_all"],
+      },
+      {
         label: "Shifts",
         href: "/hr/shifts",
         icon: "shifts",
@@ -138,7 +144,6 @@ export const NAV_SECTIONS: NavSection[] = [
  * in one place rather than scattered across future commits.
  */
 export const PLANNED_NAV: { label: string; milestone: string }[] = [
-  { label: "Attendance", milestone: "M2 (shifts done)" },
   { label: "Leave", milestone: "M3" },
   { label: "Holidays", milestone: "M3" },
   { label: "Notifications", milestone: "M4" },

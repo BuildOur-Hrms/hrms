@@ -7,7 +7,7 @@ only how to run what is built. Where the two disagree, the blueprint wins —
 except for the deviations recorded at the bottom of this file.
 
 **Current state:** Phase 1, milestones M0 (foundation), M1 (org & employees) and
-the shifts half of M2. Attendance itself, leave and holidays are not built yet.
+M2 (shifts & attendance). Leave and holidays are M3 and not built yet.
 
 ---
 
@@ -330,14 +330,16 @@ Each of these was a forced choice, not a preference:
 
 ## What is not built yet
 
-Phase 1 milestones M2 onward, minus shifts: attendance (punches, nightly
-calculation, corrections, month locks), leave (types, policies, balances,
-accruals, requests), holidays, notifications, dashboards beyond headcount, and
-the integration / permission-matrix / e2e test suites. Build order is
+Phase 1 milestone M3 onward: leave (types, policies, balances, accruals,
+requests), holidays, notifications, dashboards beyond headcount, and the
+integration / permission-matrix / e2e test suites. Build order is
 `docs/10-roadmap-testing-deployment.md` §6.
 
-Shift definitions and assignment history landed ahead of the rest of M2,
-because attendance cannot be calculated without knowing which rules were in
-force on a date. `EmployeeShift` is append-and-close rather than editable for
-the same reason: recomputing a past month has to use the shift that applied
-then, not the one that applies now.
+Two seams in M2 are deliberately left open for M3. The calculator takes
+`isHoliday` and `isOnLeave` as arguments rather than reading tables that do not
+exist yet, and the nightly job passes `false` for both — so leave and holidays
+become a matter of resolving those two booleans, not of reworking the rules.
+
+Manual entry by HR is also not built. Approving a correction already writes
+`manual` punches, so the mechanism exists; what is missing is a screen for
+entering one directly without a request behind it.
