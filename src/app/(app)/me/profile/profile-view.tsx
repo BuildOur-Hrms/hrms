@@ -37,6 +37,7 @@ import {
   updateOwnProfileSchema,
   type EmergencyContactFormValues,
   type EmergencyContactInput,
+  type UpdateOwnProfileFormValues,
   type UpdateOwnProfileInput,
 } from "@/modules/employees/validators";
 
@@ -319,7 +320,7 @@ function EditProfileDialog({
     setError,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<UpdateOwnProfileInput>({
+  } = useForm<UpdateOwnProfileFormValues, unknown, UpdateOwnProfileInput>({
     resolver: zodResolver(updateOwnProfileSchema),
     defaultValues: {
       firstName: profile.firstName,
@@ -327,7 +328,7 @@ function EditProfileDialog({
       phone: profile.phone ?? "",
       personalEmail: profile.personalEmail ?? "",
       dateOfBirth: profile.dateOfBirth ?? "",
-      gender: (profile.gender ?? "") as UpdateOwnProfileInput["gender"],
+      gender: (profile.gender ?? "") as UpdateOwnProfileFormValues["gender"],
       address: profile.address ?? "",
     },
   });

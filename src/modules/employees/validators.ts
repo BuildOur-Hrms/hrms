@@ -15,6 +15,21 @@ const dateOnly = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
   .refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00Z`)), "Not a real date");
 
+/**
+ * A date that may be left unset.
+ *
+ * The empty string is folded to null first, because that is what an untouched
+ * `<input type="date">` submits — and without this the form refuses to save
+ * an employee who simply has no probation end date, complaining that "" is
+ * not in YYYY-MM-DD format. A date nobody entered is an absent date, not a
+ * malformed one.
+ */
+const optionalDateOnly = z
+  .string()
+  .nullish()
+  .transform((value) => (value ? value : null))
+  .pipe(dateOnly.nullable());
+
 export const employmentTypes = ["full_time", "part_time", "contract", "intern"] as const;
 export const employeeStatuses = ["onboarding", "active", "on_notice", "exited"] as const;
 export const genders = ["male", "female", "other", "undisclosed"] as const;
@@ -50,7 +65,7 @@ export const createEmployeeSchema = z
     workEmail: z.string().trim().toLowerCase().email().max(160).nullish(),
     personalEmail: z.string().trim().toLowerCase().email().max(160).nullish(),
     phone: z.string().trim().max(30).nullish(),
-    dateOfBirth: dateOnly.nullish(),
+    dateOfBirth: optionalDateOnly,
     gender: z.enum(genders).nullish(),
     address: z.string().trim().max(2000).nullish(),
 
@@ -62,7 +77,7 @@ export const createEmployeeSchema = z
     employmentType: z.enum(employmentTypes),
     status: z.enum(employeeStatuses).default("onboarding"),
     joinDate: dateOnly,
-    probationEndDate: dateOnly.nullish(),
+    probationEndDate: optionalDateOnly,
     noticePeriodDays: z.coerce.number().int().min(0).max(365).nullish(),
 
     /** Optional: HR may set a code explicitly, otherwise one is generated. */
@@ -76,10 +91,25 @@ export const createEmployeeSchema = z
 
     /** Create the login account and email the invite in the same step. */
     invite: z.boolean().default(false),
+
+    /**
+     * An account that exists already, being given the record it never had.
+     *
+     * The other half of `invite`: that one makes a login for a record, this
+     * one makes a record for a login. Somebody invited directly has an
+     * account and no record, and cannot be invited again — an account that
+     * has been signed in to is active, and inviting an active account is
+     * refused.
+     */
+    linkUserId: z.string().uuid().nullish(),
   })
   .refine((v) => !v.invite || !!v.workEmail, {
     message: "A work email is required to send an invite",
     path: ["workEmail"],
+  })
+  .refine((v) => !(v.invite && v.linkUserId), {
+    message: "This account already exists, so there is no invite to send",
+    path: ["invite"],
   })
   .refine((v) => !v.probationEndDate || v.probationEndDate >= v.joinDate, {
     message: "Probation cannot end before the join date",
@@ -100,7 +130,7 @@ export const updateEmployeeSchema = z.object({
   workEmail: z.string().trim().toLowerCase().email().max(160).nullish(),
   personalEmail: z.string().trim().toLowerCase().email().max(160).nullish(),
   phone: z.string().trim().max(30).nullish(),
-  dateOfBirth: dateOnly.nullish(),
+  dateOfBirth: optionalDateOnly,
   gender: z.enum(genders).nullish(),
   address: z.string().trim().max(2000).nullish(),
   departmentId: z.string().uuid().optional(),
@@ -109,8 +139,8 @@ export const updateEmployeeSchema = z.object({
   managerId: z.string().uuid().nullish(),
   employmentType: z.enum(employmentTypes).optional(),
   joinDate: dateOnly.optional(),
-  probationEndDate: dateOnly.nullish(),
-  confirmationDate: dateOnly.nullish(),
+  probationEndDate: optionalDateOnly,
+  confirmationDate: optionalDateOnly,
   noticePeriodDays: z.coerce.number().int().min(0).max(365).nullish(),
 });
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
@@ -151,10 +181,18 @@ export const updateOwnProfileSchema = z.object({
   phone: z.string().trim().max(30).nullish(),
   personalEmail: z.string().trim().toLowerCase().email().max(160).nullish(),
   address: z.string().trim().max(2000).nullish(),
-  dateOfBirth: dateOnly.nullish(),
+  dateOfBirth: optionalDateOnly,
   gender: z.enum(genders).nullish(),
 });
 export type UpdateOwnProfileInput = z.infer<typeof updateOwnProfileSchema>;
+/**
+ * The pre-parse shape, for the form.
+ *
+ * `dateOfBirth` differs across the parse — an empty input is a string going
+ * in and null coming out — so a form typed on the output side cannot describe
+ * its own fields.
+ */
+export type UpdateOwnProfileFormValues = z.input<typeof updateOwnProfileSchema>;
 
 /**
  * Finishing setup after an invite.
@@ -169,7 +207,7 @@ export type CompleteProfileInput = z.infer<typeof completeProfileSchema>;
 export const changeStatusSchema = z.object({
   status: z.enum(employeeStatuses),
   /** Required when moving to `exited`. */
-  exitDate: dateOnly.nullish(),
+  exitDate: optionalDateOnly,
   reason: z.string().trim().max(500).nullish(),
 });
 export type ChangeStatusInput = z.infer<typeof changeStatusSchema>;
