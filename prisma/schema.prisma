@@ -235,35 +235,39 @@ model Company {
   updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt    DateTime?     @map("deleted_at") @db.Timestamptz(6)
 
-  locations            Location[]
-  departments          Department[]
-  designations         Designation[]
-  shifts               Shift[]
-  employeeShifts       EmployeeShift[]
-  punches              AttendancePunch[]
-  attendanceRecords    AttendanceRecord[]
-  corrections          AttendanceCorrection[]
-  users                User[]
-  roles                Role[]
-  employees            Employee[]
-  emergencyContacts    EmergencyContact[]
-  systemSettings       SystemSetting[]
-  auditLogs            AuditLog[]
-  attendanceMonthLocks AttendanceMonthLock[]
-  holidays             Holiday[]
-  leaveTypes           LeaveType[]
-  leavePolicies        LeavePolicy[]
-  leaveBalances        LeaveBalance[]
-  leaveRequests        LeaveRequest[]
-  notifications        Notification[]
-  announcements        Announcement[]
-  announcementReads    AnnouncementRead[]
-  jobTasks             JobTask[]
-  jobPostings          JobPosting[]
-  candidates           Candidate[]
-  applications         Application[]
-  interviews           Interview[]
-  offers               Offer[]
+  locations              Location[]
+  departments            Department[]
+  designations           Designation[]
+  shifts                 Shift[]
+  employeeShifts         EmployeeShift[]
+  punches                AttendancePunch[]
+  attendanceRecords      AttendanceRecord[]
+  corrections            AttendanceCorrection[]
+  users                  User[]
+  roles                  Role[]
+  employees              Employee[]
+  emergencyContacts      EmergencyContact[]
+  systemSettings         SystemSetting[]
+  auditLogs              AuditLog[]
+  attendanceMonthLocks   AttendanceMonthLock[]
+  holidays               Holiday[]
+  leaveTypes             LeaveType[]
+  leavePolicies          LeavePolicy[]
+  leaveBalances          LeaveBalance[]
+  leaveRequests          LeaveRequest[]
+  notifications          Notification[]
+  announcements          Announcement[]
+  announcementReads      AnnouncementRead[]
+  jobTasks               JobTask[]
+  jobPostings            JobPosting[]
+  candidates             Candidate[]
+  applications           Application[]
+  interviews             Interview[]
+  offers                 Offer[]
+  checklistTemplates     ChecklistTemplate[]
+  checklistTemplateTasks ChecklistTemplateTask[]
+  checklistTasks         ChecklistTask[]
+  offboardingRequests    OffboardingRequest[]
 
   @@map("companies")
 }
@@ -475,61 +479,64 @@ model PasswordResetToken {
 // ─────────────────────────────────────────────── people
 
 model Employee {
-  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId        String         @map("company_id") @db.Uuid
-  userId           String?        @unique @map("user_id") @db.Uuid
-  employeeCode     String         @map("employee_code") @db.VarChar(30)
-  firstName        String         @map("first_name") @db.VarChar(80)
-  lastName         String?        @map("last_name") @db.VarChar(80)
-  workEmail        String?        @map("work_email") @db.VarChar(160)
-  personalEmail    String?        @map("personal_email") @db.VarChar(160)
-  phone            String?        @db.VarChar(30)
-  dateOfBirth      DateTime?      @map("date_of_birth") @db.Date
-  gender           Gender?
-  address          String?
-  photoKey         String?        @map("photo_key") @db.VarChar(255)
-  departmentId     String         @map("department_id") @db.Uuid
-  designationId    String         @map("designation_id") @db.Uuid
-  locationId       String         @map("location_id") @db.Uuid
-  managerId        String?        @map("manager_id") @db.Uuid
-  employmentType   EmploymentType @map("employment_type")
-  status           EmployeeStatus @default(onboarding)
-  joinDate         DateTime       @map("join_date") @db.Date
-  probationEndDate DateTime?      @map("probation_end_date") @db.Date
-  confirmationDate DateTime?      @map("confirmation_date") @db.Date
-  exitDate         DateTime?      @map("exit_date") @db.Date
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId          String         @map("company_id") @db.Uuid
+  userId             String?        @unique @map("user_id") @db.Uuid
+  employeeCode       String         @map("employee_code") @db.VarChar(30)
+  firstName          String         @map("first_name") @db.VarChar(80)
+  lastName           String?        @map("last_name") @db.VarChar(80)
+  workEmail          String?        @map("work_email") @db.VarChar(160)
+  personalEmail      String?        @map("personal_email") @db.VarChar(160)
+  phone              String?        @db.VarChar(30)
+  dateOfBirth        DateTime?      @map("date_of_birth") @db.Date
+  gender             Gender?
+  address            String?
+  photoKey           String?        @map("photo_key") @db.VarChar(255)
+  departmentId       String         @map("department_id") @db.Uuid
+  designationId      String         @map("designation_id") @db.Uuid
+  locationId         String         @map("location_id") @db.Uuid
+  managerId          String?        @map("manager_id") @db.Uuid
+  employmentType     EmploymentType @map("employment_type")
+  status             EmployeeStatus @default(onboarding)
+  joinDate           DateTime       @map("join_date") @db.Date
+  probationEndDate   DateTime?      @map("probation_end_date") @db.Date
+  confirmationDate   DateTime?      @map("confirmation_date") @db.Date
+  exitDate           DateTime?      @map("exit_date") @db.Date
   /// Overrides the company default when set.
-  noticePeriodDays Int?           @map("notice_period_days")
+  noticePeriodDays   Int?           @map("notice_period_days")
   /// When this person finished setting up their own details.
   ///
   /// A stamp rather than a guess from empty fields: somebody who genuinely
   /// has no landline should not be nagged forever, and "they have seen the
   /// form" is a different fact from "the form has values in it".
-  profileCompletedAt DateTime?    @map("profile_completed_at") @db.Timestamptz(6)
-  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt        DateTime?      @map("deleted_at") @db.Timestamptz(6)
+  profileCompletedAt DateTime?      @map("profile_completed_at") @db.Timestamptz(6)
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt          DateTime?      @map("deleted_at") @db.Timestamptz(6)
 
-  company           Company                @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  user              User?                  @relation("EmployeeUser", fields: [userId], references: [id], onDelete: SetNull)
-  department        Department             @relation("EmployeeDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
-  designation       Designation            @relation(fields: [designationId], references: [id], onDelete: Restrict)
-  location          Location               @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  manager           Employee?              @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
-  directReports     Employee[]             @relation("EmployeeManager")
-  headOfDepartments Department[]           @relation("DepartmentHead")
-  emergencyContacts EmergencyContact[]
-  shiftAssignments  EmployeeShift[]
-  punches           AttendancePunch[]
-  attendance        AttendanceRecord[]
-  corrections       AttendanceCorrection[]
-  monthLocks        AttendanceMonthLock[]
-  leaveBalances     LeaveBalance[]
-  leaveRequests     LeaveRequest[]         @relation("LeaveRequester")
-  leavesToApprove   LeaveRequest[]         @relation("LeaveApprover")
-  jobTasks          JobTask[]
-  interviewsPanel   Interview[]            @relation("InterviewPanel")
-  hiredFrom         Application?           @relation("ApplicationHire")
+  company             Company                @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  user                User?                  @relation("EmployeeUser", fields: [userId], references: [id], onDelete: SetNull)
+  department          Department             @relation("EmployeeDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
+  designation         Designation            @relation(fields: [designationId], references: [id], onDelete: Restrict)
+  location            Location               @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  manager             Employee?              @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
+  directReports       Employee[]             @relation("EmployeeManager")
+  headOfDepartments   Department[]           @relation("DepartmentHead")
+  emergencyContacts   EmergencyContact[]
+  shiftAssignments    EmployeeShift[]
+  punches             AttendancePunch[]
+  attendance          AttendanceRecord[]
+  corrections         AttendanceCorrection[]
+  monthLocks          AttendanceMonthLock[]
+  leaveBalances       LeaveBalance[]
+  leaveRequests       LeaveRequest[]         @relation("LeaveRequester")
+  leavesToApprove     LeaveRequest[]         @relation("LeaveApprover")
+  jobTasks            JobTask[]
+  interviewsPanel     Interview[]            @relation("InterviewPanel")
+  hiredFrom           Application?           @relation("ApplicationHire")
+  checklistTasks      ChecklistTask[]        @relation("ChecklistSubject")
+  checklistTasksOwned ChecklistTask[]        @relation("ChecklistAssignee")
+  offboardingRequests OffboardingRequest[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId, status])
@@ -1148,4 +1155,153 @@ model AuditLog {
   @@index([companyId, entityType, entityId])
   @@index([actorUserId, createdAt(sort: Desc)])
   @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────── onboarding & offboarding
+
+enum ChecklistKind {
+  onboarding
+  offboarding
+
+  @@map("checklist_kind")
+}
+
+/// Who owes a task. A role, not a person — the person is worked out when the
+/// checklist is started, and may not exist for every role in every company.
+enum ChecklistAssignee {
+  hr
+  it
+  manager
+  employee
+
+  @@map("checklist_assignee")
+}
+
+enum ChecklistTaskStatus {
+  pending
+  completed
+  skipped
+
+  @@map("checklist_task_status")
+}
+
+enum OffboardingStatus {
+  initiated
+  in_progress
+  cleared
+  settled
+  completed
+  cancelled
+
+  @@map("offboarding_status")
+}
+
+/// A named checklist, for arriving or for leaving.
+model ChecklistTemplate {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String        @map("company_id") @db.Uuid
+  kind        ChecklistKind
+  name        String        @db.VarChar(120)
+  description String?
+  isDefault   Boolean       @default(false) @map("is_default")
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime?     @map("deleted_at") @db.Timestamptz(6)
+
+  company Company                 @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  tasks   ChecklistTemplateTask[]
+  started ChecklistTask[]
+
+  @@index([companyId, kind])
+  @@map("checklist_templates")
+}
+
+model ChecklistTemplateTask {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String            @map("company_id") @db.Uuid
+  templateId    String            @map("template_id") @db.Uuid
+  title         String            @db.VarChar(160)
+  description   String?
+  assignee      ChecklistAssignee
+  /// Days from the anchor date; negative lands before it.
+  dueOffsetDays Int               @default(0) @map("due_offset_days")
+  isRequired    Boolean           @default(true) @map("is_required")
+  sortOrder     Int               @default(0) @map("sort_order")
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, sortOrder])
+  @@map("checklist_template_tasks")
+}
+
+/// One person's exit, from resignation to a disabled account.
+model OffboardingRequest {
+  id                      String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId               String            @map("company_id") @db.Uuid
+  employeeId              String            @map("employee_id") @db.Uuid
+  reason                  String
+  requestedLastWorkingDay DateTime          @map("requested_last_working_day") @db.Date
+  /// Settled by HR from the notice period; until then the requested day is
+  /// what somebody asked for, not what was agreed.
+  lastWorkingDay          DateTime?         @map("last_working_day") @db.Date
+  status                  OffboardingStatus @default(initiated)
+  submittedBy             String?           @map("submitted_by") @db.Uuid
+  approvedBy              String?           @map("approved_by") @db.Uuid
+  approvedAt              DateTime?         @map("approved_at") @db.Timestamptz(6)
+  confirmedBy             String?           @map("confirmed_by") @db.Uuid
+  confirmedAt             DateTime?         @map("confirmed_at") @db.Timestamptz(6)
+  clearedAt               DateTime?         @map("cleared_at") @db.Timestamptz(6)
+  settledAt               DateTime?         @map("settled_at") @db.Timestamptz(6)
+  completedAt             DateTime?         @map("completed_at") @db.Timestamptz(6)
+  cancelledAt             DateTime?         @map("cancelled_at") @db.Timestamptz(6)
+  cancellationReason      String?           @map("cancellation_reason")
+  leaveEncashmentDays     Decimal?          @map("leave_encashment_days") @db.Decimal(6, 2)
+  settlementNotes         String?           @map("settlement_notes")
+  createdAt               DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee Employee        @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  tasks    ChecklistTask[]
+
+  @@index([companyId, status])
+  @@map("offboarding_requests")
+}
+
+/// A task somebody actually has to do, copied from a template so that editing
+/// the template later does not rewrite work already under way.
+model ChecklistTask {
+  id                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId            String              @map("company_id") @db.Uuid
+  kind                 ChecklistKind
+  employeeId           String              @map("employee_id") @db.Uuid
+  offboardingRequestId String?             @map("offboarding_request_id") @db.Uuid
+  templateId           String?             @map("template_id") @db.Uuid
+  title                String              @db.VarChar(160)
+  description          String?
+  assignee             ChecklistAssignee
+  assignedToEmployeeId String?             @map("assigned_to_employee_id") @db.Uuid
+  dueDate              DateTime?           @map("due_date") @db.Date
+  isRequired           Boolean             @default(true) @map("is_required")
+  sortOrder            Int                 @default(0) @map("sort_order")
+  status               ChecklistTaskStatus @default(pending)
+  completedBy          String?             @map("completed_by") @db.Uuid
+  completedAt          DateTime?           @map("completed_at") @db.Timestamptz(6)
+  skipReason           String?             @map("skip_reason")
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company    Company             @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee   Employee            @relation("ChecklistSubject", fields: [employeeId], references: [id], onDelete: Cascade)
+  assignedTo Employee?           @relation("ChecklistAssignee", fields: [assignedToEmployeeId], references: [id], onDelete: SetNull)
+  request    OffboardingRequest? @relation(fields: [offboardingRequestId], references: [id], onDelete: Cascade)
+  template   ChecklistTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([employeeId, kind])
+  @@index([companyId, assignedToEmployeeId, status])
+  @@index([companyId, status, dueDate])
+  @@map("checklist_tasks")
 }
