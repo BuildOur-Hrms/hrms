@@ -336,6 +336,20 @@ export function CreateEmployeeDialog({
               </Field>
             </div>
 
+            {/*
+              Where the contents of those three lists come from.
+              
+              A company that has only ever had the one seeded department sees
+              a picker with a single choice and no way to tell whether that is
+              the product's limit or its own setup. Named rather than linked:
+              this is a dialog, and following a link from it throws away
+              everything typed so far.
+            */}
+            <p className="text-muted-foreground text-xs">
+              Departments and designations are managed under HR → Departments, and locations under
+              Admin → Locations.
+            </p>
+
             <div className="grid gap-4 sm:grid-cols-3">
               <Field
                 label="Employment type"
