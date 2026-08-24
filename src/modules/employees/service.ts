@@ -11,6 +11,7 @@ import type {
   CreateEmployeeInput,
   EmergencyContactInput,
   ListEmployeesInput,
+  SetUpOwnProfileInput,
   UpdateEmployeeInput,
   UpdateOwnProfileInput,
 } from "./validators";
@@ -182,6 +183,90 @@ export async function getOwnProfile(ctx: RequestContext) {
     });
   }
   return getEmployee(ctx, ctx.employeeId);
+}
+
+/**
+ * Create an employee record for the caller and link it to their own account.
+ *
+ * The gap this closes: the seed gives the HR admin an employee record and the
+ * platform owner none, so that account opened `/me/profile` and was told to
+ * ask HR to connect it — advice addressed to the person reading it.
+ *
+ * Not a new privilege. It needs `employee.create`, which is the same
+ * permission that already lets these accounts create a record for anybody in
+ * the company; this only wires one to themselves and saves the two-step dance
+ * of creating it in `/hr/employees` and then finding the invite.
+ *
+ * The narrowed schema is what keeps it honest. Manager, status and employee
+ * code are absent rather than validated, so the one path where the subject and
+ * the author are the same account cannot be used to quietly grade oneself.
+ */
+export async function setUpOwnProfile(ctx: RequestContext, input: SetUpOwnProfileInput) {
+  if (ctx.employeeId) {
+    throw new ConflictError("This account already has an employee record.");
+  }
+
+  // A soft-deleted record still holds the unique link on `user_id`, and the
+  // right answer there is to restore it rather than to grow a second one.
+  const archived = await ctx.db.employee.findFirst({
+    where: { userId: ctx.userId, deletedAt: { not: null } },
+    select: { id: true },
+  });
+  if (archived) {
+    throw new ConflictError(
+      "This account was linked to an employee record that has since been removed. Restore that one rather than creating a second.",
+    );
+  }
+
+  await assertOrgRefs(ctx, input);
+
+  if (input.workEmail) {
+    const clash = await ctx.db.employee.findFirst({
+      where: { workEmail: input.workEmail },
+      select: { id: true },
+    });
+    if (clash) throw new ConflictError("Another employee already uses that work email");
+  }
+
+  const created = await ctx.db.employee.create({
+    data: {
+      companyId: ctx.companyId,
+      userId: ctx.userId,
+      employeeCode: await nextEmployeeCode(ctx),
+      firstName: input.firstName,
+      lastName: input.lastName ?? null,
+      workEmail: input.workEmail ?? null,
+      phone: input.phone ?? null,
+      departmentId: input.departmentId,
+      designationId: input.designationId,
+      locationId: input.locationId,
+      employmentType: input.employmentType,
+      // Not `onboarding`, which is where a new hire starts. Somebody setting
+      // themselves up is already at work — they are the one running the place.
+      status: "active",
+      joinDate: fromDateOnly(input.joinDate),
+    },
+    select: employeeSelect,
+  });
+
+  await emit(
+    "employee.created",
+    {
+      employeeId: created.id,
+      employeeCode: created.employeeCode,
+      after: {
+        firstName: created.firstName,
+        lastName: created.lastName,
+        employmentType: created.employmentType,
+        // The trail should distinguish "HR added a person" from "an
+        // administrator set themselves up". They read very differently later.
+        selfSetUp: true,
+      },
+    },
+    actor(ctx),
+  );
+
+  return getEmployee(ctx, created.id);
 }
 
 // ─────────────────────────────────────────────── write

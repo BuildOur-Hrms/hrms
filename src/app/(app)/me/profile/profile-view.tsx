@@ -29,6 +29,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api, applyServerErrors } from "@/lib/api-client";
 import { fullName, initials } from "@/lib/utils";
+
+import { SetUpProfile } from "./set-up-profile";
 import {
   emergencyContactSchema,
   updateOwnProfileSchema,
@@ -66,7 +68,14 @@ interface Profile {
 
 const profileKey = ["me", "profile"] as const;
 
-export function ProfileView() {
+export function ProfileView({
+  /** Whether this account may create its own employee record. */
+  canSetUp = false,
+  email,
+}: {
+  canSetUp?: boolean;
+  email: string;
+}) {
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
@@ -97,6 +106,12 @@ export function ProfileView() {
   }
 
   if (error || !data) {
+    // Somebody who may create employee records can create their own, which is
+    // the usual case here: the seed gives the HR admin a record and leaves the
+    // platform owner without one. Telling that person to ask their HR team
+    // would be advice addressed to the reader.
+    if (canSetUp) return <SetUpProfile email={email} />;
+
     return (
       <EmptyState
         title="No employee record"

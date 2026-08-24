@@ -19,6 +19,30 @@ export const employmentTypes = ["full_time", "part_time", "contract", "intern"] 
 export const employeeStatuses = ["onboarding", "active", "on_notice", "exited"] as const;
 export const genders = ["male", "female", "other", "undisclosed"] as const;
 
+/**
+ * Setting up your own employee record.
+ *
+ * A narrowed `createEmployeeSchema`: no manager, no status, no employee code.
+ * Those are things the company decides about a person, and this is the one
+ * path where the person and the company are the same account — so the fields
+ * that would let somebody quietly grade themselves are simply absent rather
+ * than validated.
+ */
+export const setUpOwnProfileSchema = z.object({
+  firstName: z.string().trim().min(1, "Required").max(80),
+  lastName: z.string().trim().max(80).nullish(),
+  workEmail: z.string().trim().toLowerCase().email().max(160).nullish(),
+  phone: z.string().trim().max(30).nullish(),
+
+  departmentId: z.string().uuid("Choose a department"),
+  designationId: z.string().uuid("Choose a designation"),
+  locationId: z.string().uuid("Choose a location"),
+
+  employmentType: z.enum(employmentTypes),
+  joinDate: dateOnly,
+});
+export type SetUpOwnProfileInput = z.infer<typeof setUpOwnProfileSchema>;
+
 export const createEmployeeSchema = z
   .object({
     firstName: z.string().trim().min(1, "Required").max(80),
