@@ -61,6 +61,8 @@ export const SESSION_ONLY_REASONS: Record<string, string> = {
   "POST /api/v1/auth/logout": "Ending your own session needs no permission.",
   "GET /api/v1/me/profile": "Your own profile.",
   "PATCH /api/v1/me/profile": "Your own profile, through a field allowlist.",
+  "POST /api/v1/me/profile/complete":
+    "Finishing your own setup after an invite, through the same allowlist.",
 
   "GET /api/v1/notifications": "Your own notifications.",
   "POST /api/v1/notifications/read": "Marking your own notifications read.",
