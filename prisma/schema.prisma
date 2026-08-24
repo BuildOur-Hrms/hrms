@@ -133,6 +133,65 @@ enum AttendanceStatus {
 /// the completion figure can be trusted: work the company asked for and work
 /// a person chose for themselves are not the same claim, and averaging them
 /// together would let anyone raise their own number by adding easy tasks.
+enum JobStatus {
+  draft
+  open
+  on_hold
+  closed
+
+  @@map("job_status")
+}
+
+enum CandidateSource {
+  referral
+  portal
+  agency
+  direct
+
+  @@map("candidate_source")
+}
+
+/// Rejection is reachable from any stage, which is why it is a stage rather
+/// than a flag: "where did we lose them" is the question a funnel exists to
+/// answer.
+enum ApplicationStage {
+  applied
+  screening
+  interview
+  offer
+  hired
+  rejected
+
+  @@map("application_stage")
+}
+
+enum InterviewMode {
+  onsite
+  video
+  phone
+
+  @@map("interview_mode")
+}
+
+enum InterviewRecommendation {
+  strong_yes
+  yes
+  no
+  strong_no
+
+  @@map("interview_recommendation")
+}
+
+enum OfferStatus {
+  draft
+  sent
+  accepted
+  declined
+  withdrawn
+
+  @@map("offer_status")
+}
+
 enum TaskOrigin {
   assigned
   self
@@ -200,6 +259,11 @@ model Company {
   announcements        Announcement[]
   announcementReads    AnnouncementRead[]
   jobTasks             JobTask[]
+  jobPostings          JobPosting[]
+  candidates           Candidate[]
+  applications         Application[]
+  interviews           Interview[]
+  offers               Offer[]
 
   @@map("companies")
 }
@@ -216,9 +280,10 @@ model Location {
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  employees Employee[]
-  holidays  Holiday[]
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employees   Employee[]
+  holidays    Holiday[]
+  jobPostings JobPosting[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -239,6 +304,7 @@ model Department {
   headEmployee  Employee?      @relation("DepartmentHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
   employees     Employee[]     @relation("EmployeeDepartment")
   announcements Announcement[]
+  jobPostings   JobPosting[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -255,8 +321,10 @@ model Designation {
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  employees Employee[]
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employees   Employee[]
+  jobPostings JobPosting[]
+  offers      Offer[]
 
   @@unique([companyId, code])
   @@index([companyId, level])
@@ -314,6 +382,8 @@ model User {
   announcementsWritten Announcement[]         @relation("AnnouncementAuthor")
   announcementReads    AnnouncementRead[]
   jobTasksAuthored     JobTask[]              @relation("JobTaskAuthor")
+  jobPostingsAuthored  JobPosting[]           @relation("JobPostingAuthor")
+  offersApproved       Offer[]                @relation("OfferApprover")
 
   @@unique([companyId, email])
   @@index([companyId, status])
@@ -452,6 +522,8 @@ model Employee {
   leaveRequests     LeaveRequest[]         @relation("LeaveRequester")
   leavesToApprove   LeaveRequest[]         @relation("LeaveApprover")
   jobTasks          JobTask[]
+  interviewsPanel   Interview[]            @relation("InterviewPanel")
+  hiredFrom         Application?           @relation("ApplicationHire")
 
   @@unique([companyId, employeeCode])
   @@index([companyId, status])
@@ -906,6 +978,147 @@ model JobTask {
   @@index([employeeId, year, month])
   @@index([companyId, employeeId, status])
   @@map("job_tasks")
+}
+
+/// A role we are hiring for.
+model JobPosting {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String         @map("company_id") @db.Uuid
+  title          String         @db.VarChar(160)
+  departmentId   String         @map("department_id") @db.Uuid
+  designationId  String         @map("designation_id") @db.Uuid
+  locationId     String         @map("location_id") @db.Uuid
+  employmentType EmploymentType @map("employment_type")
+  openings       Int            @default(1)
+  description    String?
+  /// Minor units of the company currency, and never shown to a candidate.
+  /// Integers because a salary band in floating point is a rounding error
+  /// waiting to become an offer.
+  salaryMin      BigInt?        @map("salary_min")
+  salaryMax      BigInt?        @map("salary_max")
+  status         JobStatus      @default(draft)
+  closedAt       DateTime?      @map("closed_at") @db.Timestamptz(6)
+  createdBy      String?        @map("created_by") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  department   Department    @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  designation  Designation   @relation(fields: [designationId], references: [id], onDelete: Restrict)
+  location     Location      @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  author       User?         @relation("JobPostingAuthor", fields: [createdBy], references: [id], onDelete: SetNull)
+  applications Application[]
+
+  @@index([companyId, status])
+  @@map("job_postings")
+}
+
+/// A person, not an application. Kept apart so that somebody who was nearly
+/// right for one role can be found again for the next one, which is the whole
+/// value of a talent pool.
+model Candidate {
+  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String          @map("company_id") @db.Uuid
+  firstName String          @map("first_name") @db.VarChar(80)
+  lastName  String?         @map("last_name") @db.VarChar(80)
+  email     String          @db.VarChar(160)
+  phone     String?         @db.VarChar(30)
+  source    CandidateSource @default(direct)
+  /// Object key in storage. The file itself is never public.
+  resumeKey String?         @map("resume_key") @db.VarChar(255)
+  notes     String?
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  applications Application[]
+
+  @@unique([companyId, email])
+  @@index([companyId])
+  @@map("candidates")
+}
+
+/// One candidate against one job. The same person may apply to several.
+model Application {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String           @map("company_id") @db.Uuid
+  candidateId     String           @map("candidate_id") @db.Uuid
+  jobPostingId    String           @map("job_posting_id") @db.Uuid
+  stage           ApplicationStage @default(applied)
+  /// Required when the stage is rejected, enforced by a check constraint:
+  /// "why did we say no" is the one field everyone skips and everyone later
+  /// needs.
+  rejectionReason String?          @map("rejection_reason")
+  appliedAt       DateTime         @default(now()) @map("applied_at") @db.Timestamptz(6)
+  /// Set when an accepted offer becomes a person on the payroll.
+  hiredEmployeeId String?          @unique @map("hired_employee_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company       Company     @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  candidate     Candidate   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobPosting    JobPosting  @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
+  hiredEmployee Employee?   @relation("ApplicationHire", fields: [hiredEmployeeId], references: [id], onDelete: SetNull)
+  interviews    Interview[]
+  offers        Offer[]
+
+  @@unique([candidateId, jobPostingId])
+  @@index([companyId, stage])
+  @@map("applications")
+}
+
+model Interview {
+  id             String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String                   @map("company_id") @db.Uuid
+  applicationId  String                   @map("application_id") @db.Uuid
+  roundName      String                   @map("round_name") @db.VarChar(80)
+  scheduledAt    DateTime                 @map("scheduled_at") @db.Timestamptz(6)
+  interviewerId  String                   @map("interviewer_id") @db.Uuid
+  mode           InterviewMode            @default(video)
+  feedback       String?
+  rating         Int?
+  recommendation InterviewRecommendation?
+  submittedAt    DateTime?                @map("submitted_at") @db.Timestamptz(6)
+  createdAt      DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewer Employee    @relation("InterviewPanel", fields: [interviewerId], references: [id], onDelete: Restrict)
+
+  @@index([companyId, scheduledAt])
+  @@index([interviewerId, scheduledAt])
+  @@map("interviews")
+}
+
+model Offer {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String      @map("company_id") @db.Uuid
+  applicationId String      @map("application_id") @db.Uuid
+  designationId String      @map("designation_id") @db.Uuid
+  /// Minor units, as everywhere money appears.
+  ctc           BigInt
+  joiningDate   DateTime    @map("joining_date") @db.Date
+  expiryDate    DateTime?   @map("expiry_date") @db.Date
+  status        OfferStatus @default(draft)
+  /// An offer may not be sent until somebody holding recruitment.approve has
+  /// signed it off. The gate is this pair of columns rather than a boolean:
+  /// who, and when, are both asked about afterwards.
+  approvedBy    String?     @map("approved_by") @db.Uuid
+  approvedAt    DateTime?   @map("approved_at") @db.Timestamptz(6)
+  sentAt        DateTime?   @map("sent_at") @db.Timestamptz(6)
+  respondedAt   DateTime?   @map("responded_at") @db.Timestamptz(6)
+  notes         String?
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  designation Designation @relation(fields: [designationId], references: [id], onDelete: Restrict)
+  approver    User?       @relation("OfferApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@map("offers")
 }
 
 model AuditLog {
