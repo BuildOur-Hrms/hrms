@@ -34,7 +34,8 @@ export type NavIconName =
   | "settings"
   | "audit"
   | "reports"
-  | "tasks";
+  | "tasks"
+  | "hiring";
 
 export interface NavItem {
   label: string;
@@ -70,6 +71,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/me/leave",
         icon: "leave",
         permissions: ["leave.view_own"],
+      },
+      {
+        label: "My interviews",
+        href: "/me/interviews",
+        icon: "hiring",
+        permissions: [],
       },
       {
         label: "My tasks",
@@ -164,6 +171,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/hr/announcements",
         icon: "notifications",
         permissions: ["announcements.create"],
+      },
+      {
+        label: "Hiring",
+        href: "/hr/recruitment",
+        icon: "hiring",
+        permissions: ["recruitment.view_all"],
       },
       {
         label: "Task completion",

@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Briefcase,
   ListChecks,
   Bell,
   Building2,
@@ -48,4 +49,5 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   audit: FileClock,
   reports: BarChart3,
   tasks: ListChecks,
+  hiring: Briefcase,
 };
