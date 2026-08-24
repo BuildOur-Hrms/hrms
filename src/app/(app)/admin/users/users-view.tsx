@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  IdCard,
   KeyRound,
   Loader2,
   Mail,
@@ -30,6 +31,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+import { CreateEmployeeDialog } from "../../hr/employees/create-employee-dialog";
 import {
   Select,
   SelectContent,
@@ -74,11 +77,18 @@ function roleLabel(name: string): string {
   return name.replace(/_/g, " ");
 }
 
-export function UsersView({ canManage }: { canManage: boolean }) {
+export function UsersView({
+  canManage,
+  canCreateEmployees,
+}: {
+  canManage: boolean;
+  canCreateEmployees: boolean;
+}) {
   const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<AppUser | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [creatingFor, setCreatingFor] = useState<AppUser | null>(null);
 
   const users = useQuery({
     queryKey: ["users", q],
@@ -190,13 +200,24 @@ export function UsersView({ canManage }: { canManage: boolean }) {
                       <span className="text-muted-foreground block text-xs">{user.email}</span>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <UserStatusBadge status={user.status} />
                         {user.isLocked ? (
                           <Badge variant="secondary" className="bg-destructive/10 text-destructive">
                             Locked
                           </Badge>
                         ) : null}
+                        {/*
+                          A login with nothing behind it. Their profile,
+                          attendance and leave all hang off an employee
+                          record, so without one the application is empty for
+                          them — which reads as broken rather than incomplete.
+                        */}
+                        {user.employee ? null : (
+                          <Badge variant="secondary" className="bg-warning/12 text-warning">
+                            No employee record
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -230,6 +251,17 @@ export function UsersView({ canManage }: { canManage: boolean }) {
                             <ShieldCheck className="size-4" />
                             Roles
                           </Button>
+                          {canCreateEmployees && !user.employee && user.status !== "disabled" ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Create an employee record for ${user.email}`}
+                              onClick={() => setCreatingFor(user)}
+                            >
+                              <IdCard className="size-4" />
+                              Employee record
+                            </Button>
+                          ) : null}
                           {user.isLocked ? (
                             <Button
                               variant="ghost"
@@ -297,6 +329,22 @@ export function UsersView({ canManage }: { canManage: boolean }) {
           </div>
         )}
       </CardContent>
+
+      {/*
+        Keyed on the account so the form starts blank for each one: without it
+        a second account inherits whatever was typed for the first.
+      */}
+      {creatingFor ? (
+        <CreateEmployeeDialog
+          key={creatingFor.id}
+          open
+          onClose={() => {
+            setCreatingFor(null);
+            void queryClient.invalidateQueries({ queryKey: ["users"] });
+          }}
+          forAccount={{ id: creatingFor.id, email: creatingFor.email }}
+        />
+      ) : null}
 
       <Dialog open={inviteOpen} onOpenChange={(next) => !next && setInviteOpen(false)}>
         <DialogContent>

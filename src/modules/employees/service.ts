@@ -301,6 +301,10 @@ export async function createEmployee(ctx: RequestContext, input: CreateEmployeeI
 
   if (input.managerId) await assertManagerExists(ctx, input.managerId);
 
+  // Checked before the record is written, not after: creating an employee and
+  // then failing to attach the account would leave a record nobody asked for.
+  if (input.linkUserId) await assertAccountIsFree(ctx, input.linkUserId);
+
   if (input.workEmail) {
     const clash = await ctx.db.employee.findFirst({
       where: { workEmail: input.workEmail },
@@ -354,6 +358,18 @@ export async function createEmployee(ctx: RequestContext, input: CreateEmployeeI
     },
     actor(ctx),
   );
+
+  if (input.linkUserId) {
+    await ctx.db.employee.update({
+      where: { id: created.id },
+      data: { userId: input.linkUserId },
+    });
+    await emit(
+      "user.linked_to_employee",
+      { userId: input.linkUserId, employeeId: created.id },
+      actor(ctx),
+    );
+  }
 
   let invite: { userId: string; inviteUrl?: string } | null = null;
   if (input.invite && input.workEmail) {
@@ -866,6 +882,30 @@ export async function accountOptions(ctx: RequestContext) {
  * the employee holding it, because either would hand one person's attendance,
  * leave and payslips to another.
  */
+/**
+ * That an account exists, belongs to nobody, and can be signed in to.
+ *
+ * Shared by the two ways a record and a login are joined, so both refuse the
+ * same things: taking an account off the employee holding it, or attaching
+ * one that has been disabled.
+ */
+async function assertAccountIsFree(ctx: RequestContext, userId: string) {
+  const user = await ctx.db.user.findFirst({
+    where: { id: userId },
+    select: { id: true, status: true, employee: { select: { id: true } } },
+  });
+  if (!user) throw new NotFoundError("User");
+
+  if (user.employee) {
+    throw new BusinessRuleError("That account belongs to another employee.", {
+      rule: "account_taken",
+    });
+  }
+  if (user.status === "disabled") {
+    throw new BusinessRuleError("That account is disabled.", { rule: "account_disabled" });
+  }
+}
+
 export async function linkAccount(ctx: RequestContext, employeeId: string, userId: string) {
   const employee = await ctx.db.employee.findFirst({
     where: { id: employeeId },
@@ -882,20 +922,7 @@ export async function linkAccount(ctx: RequestContext, employeeId: string, userI
     throw new BusinessRuleError("This employee has exited.", { rule: "employee_exited" });
   }
 
-  const user = await ctx.db.user.findFirst({
-    where: { id: userId },
-    select: { id: true, status: true, employee: { select: { id: true } } },
-  });
-  if (!user) throw new NotFoundError("User");
-
-  if (user.employee) {
-    throw new BusinessRuleError("That account belongs to another employee.", {
-      rule: "account_taken",
-    });
-  }
-  if (user.status === "disabled") {
-    throw new BusinessRuleError("That account is disabled.", { rule: "account_disabled" });
-  }
+  await assertAccountIsFree(ctx, userId);
 
   await ctx.db.employee.update({ where: { id: employeeId }, data: { userId } });
 

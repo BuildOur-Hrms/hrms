@@ -21,7 +21,12 @@ export default async function AdminUsersPage() {
         title="Users"
         description="Sign-in accounts and the roles that decide what each one can do."
       />
-      <UsersView canManage={pageCan(session, "users.manage")} />
+      <UsersView
+        canManage={pageCan(session, "users.manage")}
+        // Creating the record is an employee-module action, so it is offered
+        // only to somebody who could create one from the employee screens.
+        canCreateEmployees={pageCan(session, "employee.create")}
+      />
     </>
   );
 }

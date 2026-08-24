@@ -308,6 +308,23 @@ async function main() {
     // Detach it from whatever a previous run linked it to.
     await db.employee.updateMany({ where: { userId: stray.id }, data: { userId: null } });
 
+    /*
+     * A second one, for the journey that creates the record from the Users
+     * screen rather than attaching an existing one.
+     *
+     * That journey leaves a whole employee behind, so this removes it — a
+     * hard delete, which is safe only because a record created seconds ago
+     * has no attendance or leave hanging off it. Anywhere else this would be
+     * an archive.
+     */
+    const second = await db.user.upsert({
+      where: { companyId_email: { companyId, email: `stray2@${E2E_SLUG}.test` } },
+      create: { companyId, email: `stray2@${E2E_SLUG}.test`, passwordHash, status: "active" },
+      update: { status: "active" },
+      select: { id: true },
+    });
+    await db.employee.deleteMany({ where: { userId: second.id } });
+
     const existing = await db.employee.findFirst({
       where: { companyId, employeeCode: "E2E-UNLINKED" },
       select: { id: true },

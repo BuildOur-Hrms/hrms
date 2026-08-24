@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import { GET as accountOptions } from "@/app/api/v1/employees/account-options/route";
 import { GET as unlinkedOptions } from "@/app/api/v1/employees/unlinked-options/route";
+import { POST as createEmployee } from "@/app/api/v1/employees/route";
 import { POST as inviteUser } from "@/app/api/v1/users/invite/route";
 import { POST as linkAccount } from "@/app/api/v1/employees/[id]/link-account/route";
 import { withPlatform } from "@/lib/db";
@@ -289,5 +290,99 @@ describe("inviting somebody directly", () => {
 
     expect(result.status).toBe(422);
     expect(result.error?.code).toBe("BUSINESS_RULE");
+  });
+});
+
+describe("creating the record for an account that has one already", () => {
+  it("creates it and connects it in one step", async () => {
+    const account = await withPlatform(async (db) => {
+      const user = await db.user.create({
+        data: { companyId: t.acme.companyId, email: "orphan@acme.test", status: "active" },
+        select: { id: true },
+      });
+      return user.id;
+    });
+
+    const result = await call<{ id: string }>(createEmployee, "/api/v1/employees", {
+      as: t.acme.hr,
+      method: "POST",
+      body: {
+        firstName: "Orphan",
+        lastName: "Account",
+        workEmail: "orphan@acme.test",
+        departmentId: t.acme.departmentId,
+        designationId: t.acme.designationId,
+        locationId: t.acme.locationId,
+        employmentType: "full_time",
+        joinDate: "2026-03-01",
+        linkUserId: account,
+      },
+    });
+
+    expect(result.status, result.error?.message).toBe(201);
+
+    const row = await withPlatform((db) =>
+      db.employee.findFirstOrThrow({ where: { id: result.data.id }, select: { userId: true } }),
+    );
+    expect(row.userId).toBe(account);
+  });
+
+  it("refuses an account that belongs to somebody, without leaving a record behind", async () => {
+    const before = await withPlatform((db) =>
+      db.employee.count({ where: { companyId: t.acme.companyId } }),
+    );
+
+    const result = await call(createEmployee, "/api/v1/employees", {
+      as: t.acme.hr,
+      method: "POST",
+      body: {
+        firstName: "Should not exist",
+        departmentId: t.acme.departmentId,
+        designationId: t.acme.designationId,
+        locationId: t.acme.locationId,
+        employmentType: "full_time",
+        joinDate: "2026-03-01",
+        linkUserId: t.acme.employee.userId,
+      },
+    });
+
+    expect(result.status).toBe(422);
+
+    // The account is checked before the record is written, so a refusal does
+    // not leave an employee nobody asked for.
+    const after = await withPlatform((db) =>
+      db.employee.count({ where: { companyId: t.acme.companyId } }),
+    );
+    expect(after).toBe(before);
+  });
+
+  it("will not also send an invite to somebody who already has an account", async () => {
+    const account = await withPlatform(async (db) => {
+      const user = await db.user.create({
+        data: { companyId: t.acme.companyId, email: "orphan2@acme.test", status: "active" },
+        select: { id: true },
+      });
+      return user.id;
+    });
+
+    const result = await call(createEmployee, "/api/v1/employees", {
+      as: t.acme.hr,
+      method: "POST",
+      body: {
+        firstName: "Orphan",
+        workEmail: "orphan2@acme.test",
+        departmentId: t.acme.departmentId,
+        designationId: t.acme.designationId,
+        locationId: t.acme.locationId,
+        employmentType: "full_time",
+        joinDate: "2026-03-01",
+        linkUserId: account,
+        invite: true,
+      },
+    });
+
+    // 400 rather than 422: the two fields contradict each other, which the
+    // schema settles before any rule about the world is consulted.
+    expect(result.status).toBe(400);
   });
 });

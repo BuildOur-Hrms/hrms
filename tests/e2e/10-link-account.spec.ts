@@ -37,6 +37,38 @@ test.describe("HR", () => {
     await expect(page.getByRole("button", { name: "Link an account" })).toBeHidden();
   });
 
+  test("creates a record from the users screen for an account that has none", async ({ page }) => {
+    await page.goto("/admin/users");
+
+    const row = page.locator("tr").filter({ hasText: "stray2@" });
+    await expect(row.getByText("No employee record")).toBeVisible();
+
+    await row.getByRole("button", { name: /Create an employee record/ }).click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(
+      dialog.getByRole("heading", { name: "Create their employee record" }),
+    ).toBeVisible();
+    // Their sign-in address, filled in for them.
+    await expect(dialog.getByLabel("Work email")).toHaveValue(/stray2@/);
+
+    await dialog.getByLabel("First name").fill("Adopted");
+    await dialog.getByLabel("Department").click();
+    await page.getByRole("option", { name: "Engineering" }).click();
+    await dialog.getByLabel("Designation").click();
+    await page.getByRole("option", { name: "Engineer" }).click();
+    await dialog.getByLabel("Location").click();
+    await page.getByRole("option", { name: "Head office" }).click();
+
+    await dialog.getByRole("button", { name: "Add employee" }).click();
+    await expect(dialog).toBeHidden();
+
+    // The row now names the person rather than the address, and the warning
+    // is gone — which is the whole point of the action.
+    await expect(page.locator("tr").filter({ hasText: "stray2@" })).toContainText("Adopted");
+    await expect(page.getByText("No employee record")).toHaveCount(0);
+  });
+
   test("does not offer an account that already belongs to somebody", async ({ page }) => {
     await page.goto("/hr/employees");
     await page.getByRole("link", { name: /Eli/ }).first().click();
