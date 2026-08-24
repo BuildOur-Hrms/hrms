@@ -46,7 +46,23 @@ const TYPE_LABELS: Record<(typeof employmentTypes)[number], string> = {
   intern: "Intern",
 };
 
-export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+/**
+ * Adding an employee, optionally for an account that already exists.
+ *
+ * `forAccount` is the Users screen calling: somebody was invited directly, so
+ * they hold a login with no record behind it and cannot be invited again. The
+ * form is the same one — a record needs the same facts however it starts —
+ * with the invite step dropped, because there is nobody left to invite.
+ */
+export function CreateEmployeeDialog({
+  open,
+  onClose,
+  forAccount,
+}: {
+  open: boolean;
+  onClose: () => void;
+  forAccount?: { id: string; email: string } | undefined;
+}) {
   const { data: orgOptions, isLoading: loadingOrg } = useOrgOptions();
   const { data: managers } = useManagerOptions();
   const createEmployee = useCreateEmployee();
@@ -66,7 +82,9 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
     defaultValues: {
       firstName: "",
       lastName: "",
-      workEmail: "",
+      // The address they sign in with, so the record and the login agree
+      // without anybody typing it twice.
+      workEmail: forAccount?.email ?? "",
       employmentType: "full_time",
       status: "onboarding",
       joinDate: new Date().toISOString().slice(0, 10),
@@ -84,6 +102,9 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
         workEmail: values.workEmail || null,
         managerId: values.managerId || null,
         probationEndDate: values.probationEndDate || null,
+        linkUserId: forAccount?.id ?? null,
+        // There is no invite to send to somebody who already signed in.
+        invite: forAccount ? false : values.invite,
       };
 
       const result = await createEmployee.mutateAsync(payload as CreateEmployeeInput);
@@ -147,10 +168,13 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
     >
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add employee</DialogTitle>
+          <DialogTitle>{forAccount ? "Create their employee record" : "Add employee"}</DialogTitle>
           <DialogDescription>
-            An employee code is generated automatically. You can send their login invite now or
-            later.
+            {forAccount
+              ? `${forAccount.email} has a login but no employee record, so there is nothing for
+                 their profile, attendance or leave to hang off. This creates one and connects it.`
+              : `An employee code is generated automatically. You can send their login invite now
+                 or later.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -174,22 +198,32 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
             ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="First name" error={errors.firstName?.message} required>
-                <Input autoFocus {...register("firstName")} />
+              <Field
+                label="First name"
+                htmlFor="ce-first-name"
+                error={errors.firstName?.message}
+                required
+              >
+                <Input id="ce-first-name" autoFocus {...register("firstName")} />
               </Field>
-              <Field label="Last name" error={errors.lastName?.message}>
-                <Input {...register("lastName")} />
+              <Field label="Last name" htmlFor="ce-last-name" error={errors.lastName?.message}>
+                <Input id="ce-last-name" {...register("lastName")} />
               </Field>
-              <Field label="Work email" error={errors.workEmail?.message}>
-                <Input type="email" {...register("workEmail")} />
+              <Field label="Work email" htmlFor="ce-work-email" error={errors.workEmail?.message}>
+                <Input id="ce-work-email" type="email" {...register("workEmail")} />
               </Field>
-              <Field label="Phone" error={errors.phone?.message}>
-                <Input {...register("phone")} />
+              <Field label="Phone" htmlFor="ce-phone" error={errors.phone?.message}>
+                <Input id="ce-phone" {...register("phone")} />
               </Field>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Department" error={errors.departmentId?.message} required>
+              <Field
+                label="Department"
+                htmlFor="ce-department"
+                error={errors.departmentId?.message}
+                required
+              >
                 <Controller
                   control={control}
                   name="departmentId"
@@ -199,7 +233,7 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                       value={field.value ?? ""}
                       onValueChange={field.onChange}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="ce-department">
                         <SelectValue placeholder="Choose" />
                       </SelectTrigger>
                       <SelectContent>
@@ -214,7 +248,12 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                 />
               </Field>
 
-              <Field label="Designation" error={errors.designationId?.message} required>
+              <Field
+                label="Designation"
+                htmlFor="ce-designation"
+                error={errors.designationId?.message}
+                required
+              >
                 <Controller
                   control={control}
                   name="designationId"
@@ -224,7 +263,7 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                       value={field.value ?? ""}
                       onValueChange={field.onChange}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="ce-designation">
                         <SelectValue placeholder="Choose" />
                       </SelectTrigger>
                       <SelectContent>
@@ -239,7 +278,12 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                 />
               </Field>
 
-              <Field label="Location" error={errors.locationId?.message} required>
+              <Field
+                label="Location"
+                htmlFor="ce-location"
+                error={errors.locationId?.message}
+                required
+              >
                 <Controller
                   control={control}
                   name="locationId"
@@ -249,7 +293,7 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                       value={field.value ?? ""}
                       onValueChange={field.onChange}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="ce-location">
                         <SelectValue placeholder="Choose" />
                       </SelectTrigger>
                       <SelectContent>
@@ -264,7 +308,7 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                 />
               </Field>
 
-              <Field label="Reports to" error={errors.managerId?.message}>
+              <Field label="Reports to" htmlFor="ce-reports-to" error={errors.managerId?.message}>
                 <Controller
                   control={control}
                   name="managerId"
@@ -274,7 +318,7 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                       value={field.value ?? NONE}
                       onValueChange={(value) => field.onChange(value === NONE ? null : value)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="ce-reports-to">
                         <SelectValue placeholder="No manager" />
                       </SelectTrigger>
                       <SelectContent>
@@ -293,13 +337,18 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Employment type" error={errors.employmentType?.message} required>
+              <Field
+                label="Employment type"
+                htmlFor="ce-employment-type"
+                error={errors.employmentType?.message}
+                required
+              >
                 <Controller
                   control={control}
                   name="employmentType"
                   render={({ field }) => (
                     <Select items={typeItems} value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
+                      <SelectTrigger id="ce-employment-type">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -314,33 +363,44 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
                 />
               </Field>
 
-              <Field label="Join date" error={errors.joinDate?.message} required>
-                <Input type="date" {...register("joinDate")} />
+              <Field
+                label="Join date"
+                htmlFor="ce-join-date"
+                error={errors.joinDate?.message}
+                required
+              >
+                <Input id="ce-join-date" type="date" {...register("joinDate")} />
               </Field>
 
-              <Field label="Probation ends" error={errors.probationEndDate?.message}>
-                <Input type="date" {...register("probationEndDate")} />
+              <Field
+                label="Probation ends"
+                htmlFor="ce-probation-ends"
+                error={errors.probationEndDate?.message}
+              >
+                <Input id="ce-probation-ends" type="date" {...register("probationEndDate")} />
               </Field>
             </div>
 
-            <Controller
-              control={control}
-              name="invite"
-              render={({ field }) => (
-                <label className="flex items-start gap-2.5 text-sm">
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={(checked) => field.onChange(checked === true)}
-                  />
-                  <span>
-                    Send a login invite now
-                    <span className="text-muted-foreground block text-xs">
-                      Requires a work email. They set their own password from the emailed link.
+            {forAccount ? null : (
+              <Controller
+                control={control}
+                name="invite"
+                render={({ field }) => (
+                  <label className="flex items-start gap-2.5 text-sm">
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                    />
+                    <span>
+                      Send a login invite now
+                      <span className="text-muted-foreground block text-xs">
+                        Requires a work email. They set their own password from the emailed link.
+                      </span>
                     </span>
-                  </span>
-                </label>
-              )}
-            />
+                  </label>
+                )}
+              />
+            )}
 
             <DialogFooter>
               <Button
@@ -365,20 +425,30 @@ export function CreateEmployeeDialog({ open, onClose }: { open: boolean; onClose
   );
 }
 
+/**
+ * One labelled control.
+ *
+ * `htmlFor` is not optional in practice: without it the label is text sitting
+ * near a box, so a screen reader announces an unnamed textbox and clicking
+ * the label does nothing. Every caller passes it, and the control it names
+ * carries the matching id.
+ */
 function Field({
   label,
+  htmlFor,
   error,
   required,
   children,
 }: {
   label: string;
+  htmlFor: string;
   error?: string;
   required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="grid gap-2">
-      <Label>
+      <Label htmlFor={htmlFor}>
         {label}
         {required ? <span className="text-destructive ml-0.5">*</span> : null}
       </Label>
