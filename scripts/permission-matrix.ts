@@ -107,6 +107,22 @@ export const SESSION_ONLY_REASONS: Record<string, string> = {
   "GET /api/v1/tasks/board": "The scope decides the permission; checked in the service.",
   "GET /api/v1/tasks/trend": "Scope decided per employee in the service.",
 
+  "GET /api/v1/recruitment/jobs": "Refused to anybody not running hiring, in the service.",
+  "GET /api/v1/recruitment/jobs/:id": "Refused to anybody not running hiring, in the service.",
+  "GET /api/v1/recruitment/candidates": "Refused to anybody not running hiring, in the service.",
+  "GET /api/v1/recruitment/applications": "Refused to anybody not running hiring, in the service.",
+  "GET /api/v1/recruitment/applications/:id":
+    "Refused to anybody not running hiring, in the service.",
+  "GET /api/v1/recruitment/offers": "Refused to anybody not running hiring, in the service.",
+  "GET /api/v1/recruitment/interviews":
+    "Your own rounds need no permission; scope=all is checked in the service.",
+  "POST /api/v1/recruitment/interviews/:id/feedback":
+    "The interviewer writes it. A declared permission would lock out the one person who must.",
+  "POST /api/v1/recruitment/offers/:id/status":
+    "Sending needs recruitment.approve; recording a reply does not. Split in the service.",
+  "POST /api/v1/recruitment/offers/:id/convert":
+    "Needs employee.create as well as pipeline edit; both checked in the service.",
+
   "GET /api/v1/reports": "The catalog, already filtered to what the caller may run.",
   "GET /api/v1/reports/:slug": "The scope decides the permission; checked in the service.",
 };

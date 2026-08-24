@@ -74,7 +74,16 @@ export const adminDb = prismaBase;
  *    they inherit tenancy through their parent row and are guarded by RLS
  *    policies that join to that parent.
  */
-const TENANT_MODELS = new Set([
+/**
+ * Every model carrying `company_id`, and therefore every model the extension
+ * must scope.
+ *
+ * Exported so a test can check it against the schema. A tenant table missing
+ * from this set loses layer 1 of the isolation silently — the queries keep
+ * working, they just stop being scoped — and the only thing that catches it
+ * is a test that reads both lists.
+ */
+export const TENANT_MODELS = new Set([
   "Location",
   "Department",
   "Designation",
@@ -97,6 +106,12 @@ const TENANT_MODELS = new Set([
   "Employee",
   "EmergencyContact",
   "AuditLog",
+  "JobTask",
+  "JobPosting",
+  "Candidate",
+  "Application",
+  "Interview",
+  "Offer",
 ]);
 
 /** Reads may also see platform-global rows (`company_id IS NULL`); writes may not. */

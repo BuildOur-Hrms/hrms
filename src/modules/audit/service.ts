@@ -118,6 +118,56 @@ const AUDIT_MAP: {
     before: { employeeId: p.employeeId, origin: p.origin, title: p.title },
   }),
 
+  "recruitment.job_changed": (p) => ({
+    entityType: "job_posting",
+    entityId: p.jobPostingId,
+    after: { title: p.title, action: p.action },
+  }),
+  "recruitment.candidate_changed": (p) => ({
+    entityType: "candidate",
+    entityId: p.candidateId,
+    after: { email: p.email, action: p.action },
+  }),
+  "recruitment.application_moved": (p) => ({
+    entityType: "application",
+    entityId: p.applicationId,
+    before: p.from ? { stage: p.from } : undefined,
+    after: { stage: p.to, job: p.jobTitle, reason: p.reason },
+  }),
+  "recruitment.interview_scheduled": (p) => ({
+    entityType: "interview",
+    entityId: p.interviewId,
+    after: {
+      applicationId: p.applicationId,
+      interviewerId: p.interviewerId,
+      scheduledAt: p.scheduledAt,
+      round: p.roundName,
+    },
+  }),
+  // The verdict, not the words. Written feedback is a candidate's personal
+  // data and belongs in the record it was written on, not copied into a trail
+  // that a different permission opens.
+  "recruitment.feedback_submitted": (p) => ({
+    entityType: "interview",
+    entityId: p.interviewId,
+    after: { recommendation: p.recommendation, rating: p.rating },
+  }),
+  "recruitment.offer_changed": (p) => ({
+    entityType: "offer",
+    entityId: p.offerId,
+    after: { applicationId: p.applicationId, action: p.action, ctc: p.ctc },
+  }),
+  "recruitment.converted": (p) => ({
+    entityType: "application",
+    entityId: p.applicationId,
+    after: {
+      offerId: p.offerId,
+      employeeId: p.employeeId,
+      employeeCode: p.employeeCode,
+      candidateEmail: p.candidateEmail,
+    },
+  }),
+
   "audit.exported": (p) => ({
     entityType: "audit_log",
     entityId: null,

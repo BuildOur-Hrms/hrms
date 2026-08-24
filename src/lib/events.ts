@@ -145,6 +145,57 @@ export interface DomainEventMap {
     title: string;
   };
 
+  /// Hiring. Who we are looking for, and what happened to the people who
+  /// applied — both questions get asked long after the fact.
+  "recruitment.job_changed": {
+    jobPostingId: string;
+    title: string;
+    action: string;
+  };
+  "recruitment.candidate_changed": {
+    candidateId: string;
+    email: string;
+    action: "created" | "updated";
+  };
+  /// The funnel, as it actually moved. `from` is null on the first row,
+  /// which is the application arriving.
+  "recruitment.application_moved": {
+    applicationId: string;
+    jobTitle: string;
+    from: string | null;
+    to: string;
+    reason: string | null;
+  };
+  "recruitment.interview_scheduled": {
+    interviewId: string;
+    applicationId: string;
+    interviewerId: string;
+    scheduledAt: string;
+    roundName: string;
+  };
+  "recruitment.feedback_submitted": {
+    interviewId: string;
+    applicationId: string;
+    rating: number;
+    recommendation: string;
+  };
+  /// Money and approval both live here, so the row says what was offered and
+  /// who let it go out.
+  "recruitment.offer_changed": {
+    offerId: string;
+    applicationId: string;
+    action: string;
+    ctc: number | null;
+  };
+  /// The end of the pipeline: a candidate becomes somebody on the payroll.
+  "recruitment.converted": {
+    applicationId: string;
+    offerId: string;
+    employeeId: string;
+    employeeCode: string;
+    candidateEmail: string;
+  };
+
   /// Taking data out of the system is itself a sensitive action, so the
   /// export is recorded alongside the rows it copied — who, how many, and
   /// under which filters.

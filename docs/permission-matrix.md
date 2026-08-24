@@ -90,6 +90,25 @@
 | `POST /api/v1/notifications/read` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/org/options` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/permissions` | `roles.view_all` | ✓ | ✓ | · | · |
+| `GET /api/v1/recruitment/applications` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/recruitment/applications` | `recruitment.edit` | ✓ | ✓ | · | · |
+| `GET /api/v1/recruitment/applications/:id` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/recruitment/applications/:id/stage` | `recruitment.edit` | ✓ | ✓ | · | · |
+| `GET /api/v1/recruitment/candidates` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/recruitment/candidates` | `recruitment.edit` | ✓ | ✓ | · | · |
+| `PATCH /api/v1/recruitment/candidates/:id` | `recruitment.edit` | ✓ | ✓ | · | · |
+| `GET /api/v1/recruitment/interviews` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/recruitment/interviews` | `recruitment.edit` | ✓ | ✓ | · | · |
+| `POST /api/v1/recruitment/interviews/:id/feedback` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/recruitment/jobs` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/recruitment/jobs` | `recruitment.edit` | ✓ | ✓ | · | · |
+| `GET /api/v1/recruitment/jobs/:id` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `PATCH /api/v1/recruitment/jobs/:id` | `recruitment.edit` | ✓ | ✓ | · | · |
+| `POST /api/v1/recruitment/jobs/:id/status` | `recruitment.edit` | ✓ | ✓ | · | · |
+| `GET /api/v1/recruitment/offers` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/recruitment/offers` | `recruitment.edit` | ✓ | ✓ | · | · |
+| `POST /api/v1/recruitment/offers/:id/convert` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/recruitment/offers/:id/status` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/reports` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/reports/:slug` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/roles` | `roles.view_all` | ✓ | ✓ | · | · |
@@ -116,4 +135,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**104 endpoints.** Permission-gated endpoints reachable per role — super_admin: 54 · hr_admin: 54 · manager: 7 · employee: 5.
+**123 endpoints.** Permission-gated endpoints reachable per role — super_admin: 63 · hr_admin: 63 · manager: 7 · employee: 5.
