@@ -269,6 +269,13 @@ async function main() {
 
   const managerEmployeeId = await account("manager", E2E_USERS.manager, "Morgan", null);
   await account("hr_admin", E2E_USERS.hr, "Harper", null);
+  const hrUserId = await withPlatform(async (db) => {
+    const user = await db.user.findFirstOrThrow({
+      where: { companyId, email: E2E_USERS.hr },
+      select: { id: true },
+    });
+    return user.id;
+  });
   const employeeId = await account("employee", E2E_USERS.employee, "Eli", managerEmployeeId);
 
   // Topped back up, so the leave journey tests approval rather than rejection
@@ -288,6 +295,76 @@ async function main() {
       update: { opening: 40, accrued: 0, used: 0, carriedForward: 0, adjusted: 0 },
     }),
   );
+
+  // ── tasks, with a few months behind them so the trend has a shape.
+  //
+  // The browser journey drives real controls against these rather than
+  // creating its own: a fixture that cannot support the screens it exists for
+  // is a fixture that gets worked around instead of fixed.
+  const staff = await withPlatform((db) =>
+    db.employee.findMany({ where: { companyId }, select: { id: true, firstName: true } }),
+  );
+
+  await withPlatform((db) => db.jobTask.deleteMany({ where: { companyId } }));
+
+  const now = new Date();
+  const window = [0, 1, 2, 3, 4, 5].map((back) => {
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1));
+    return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1 };
+  });
+
+  const TITLES = ["Close ten support tickets", "Ship the onboarding flow", "Write the runbook"];
+
+  interface SeedTask {
+    companyId: string;
+    employeeId: string;
+    createdBy: string;
+    origin: "assigned" | "self";
+    title: string;
+    weight: number;
+    progress: number;
+    status: "completed" | "not_started" | "in_progress";
+    completedAt: Date | null;
+    year: number;
+    month: number;
+  }
+  const tasks: SeedTask[] = [];
+
+  for (const [person, employee] of staff.entries()) {
+    for (const [back, period] of window.entries()) {
+      for (let slot = 0; slot < TITLES.length; slot++) {
+        // Deterministic rather than random: the same fixture every run, so a
+        // failing assertion is a real change and not this month's dice.
+        const progress =
+          back === 0
+            ? [0, 40, 75, 100][(person + slot) % 4]!
+            : [100, 90, 60, 25][(person + slot + back) % 4]!;
+
+        tasks.push({
+          companyId,
+          employeeId: employee.id,
+          createdBy: hrUserId,
+          // The last of the three is theirs, so both lists have something in
+          // them and the split is visible on screen.
+          origin: (slot === TITLES.length - 1 ? "self" : "assigned") as "self" | "assigned",
+          title: `${TITLES[slot]} (${employee.firstName})`,
+          weight: ((person + slot) % 3) + 1,
+          progress,
+          status: (progress === 100
+            ? "completed"
+            : progress === 0
+              ? "not_started"
+              : "in_progress") as "completed" | "not_started" | "in_progress",
+          completedAt: progress === 100 ? new Date() : null,
+          year: period.year,
+          month: period.month,
+        });
+      }
+    }
+  }
+
+  await withPlatform((db) => db.jobTask.createMany({ data: tasks }));
+  console.log(`  tasks: ${tasks.length} across ${window.length} months`);
 
   console.log(`  company: ${E2E_SLUG}`);
   for (const [role, email] of Object.entries(E2E_USERS)) {
