@@ -15,16 +15,29 @@
 set -e
 
 if [ "$VERCEL_ENV" = "production" ]; then
-  # Migrations need DDL, and a pooled endpoint cannot hold the advisory lock
-  # `migrate` takes — so this is the owner's direct connection, never the
-  # app's. Refused loudly rather than falling back to DATABASE_URL, which
-  # would try to run DDL as app_user and fail halfway through.
+  # Migrations need DDL, so this is the owner's connection, never the app's.
+  # Refused loudly rather than falling back to DATABASE_URL, which would try
+  # to run DDL as app_user and fail halfway through.
   if [ -z "$DIRECT_DATABASE_URL" ]; then
     echo "DIRECT_DATABASE_URL is not set. Set it in the Vercel project to the"
-    echo "owner's direct (non-pooled) connection string — migrations cannot"
-    echo "run as the application role."
+    echo "owner's connection string — migrations cannot run as the"
+    echo "application role."
     exit 1
   fi
+
+  # What it may NOT be is a transaction-mode pooler. Those hand out a
+  # different backend per statement, so the advisory lock `migrate` takes to
+  # stop two deploys migrating at once is released the moment it is taken.
+  # Session mode (5432) keeps one backend for the connection and is fine —
+  # which matters on Supabase, where the truly direct endpoint answers on
+  # IPv6 only and a Vercel builder cannot reach it at all.
+  case "$DIRECT_DATABASE_URL" in
+    *:6543/*|*:6543)
+      echo "DIRECT_DATABASE_URL points at port 6543 — the transaction-mode"
+      echo "pooler. Migrations need session mode: same host, port 5432."
+      exit 1
+      ;;
+  esac
 
   echo "Applying pending migrations…"
   npx prisma migrate deploy

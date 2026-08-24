@@ -76,10 +76,21 @@ does not move traffic to a deployment that did not build — so the previous
 deployment keeps serving rather than new code landing in front of a schema that
 cannot answer it.
 
-It needs `DIRECT_DATABASE_URL` set in the Vercel project, pointing at the
-**owner's** direct connection. Migrations are DDL, which `app_user` cannot run,
-and a pooled endpoint cannot hold the advisory lock `migrate` takes. The build
-refuses to start rather than falling back to `DATABASE_URL`.
+It needs `DIRECT_DATABASE_URL` set in the Vercel project, as the **owner** —
+migrations are DDL, which `app_user` deliberately cannot run. The build refuses
+to start rather than falling back to `DATABASE_URL`.
+
+On Supabase that is the **session pooler** (`…pooler.supabase.com:5432`, user
+`postgres.<project-ref>`), not the endpoint labelled "direct". The direct one,
+`db.<project-ref>.supabase.co`, resolves to IPv6 only, and Vercel's build
+machines have no IPv6 route to it — the build fails with `P1001: Can't reach
+database server`, which reads like an outage and is not one.
+
+The transaction pooler on port **6543** is the one that genuinely cannot run
+migrations: it hands out a different backend per statement, so the advisory
+lock `migrate` takes to stop two deploys colliding is released as soon as it is
+taken. Session mode holds one backend for the life of the connection. The build
+checks the port and says so rather than letting Prisma fail obscurely.
 
 Only production deployments migrate. Previews share the production database and
 are readers of the schema, not authors of it.
