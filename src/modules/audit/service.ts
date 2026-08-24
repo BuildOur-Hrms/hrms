@@ -71,6 +71,11 @@ const AUDIT_MAP: {
     entityId: p.userId,
     after: { roles: p.roles },
   }),
+  "user.linked_to_employee": (p) => ({
+    entityType: "user",
+    entityId: p.userId,
+    after: { employeeId: p.employeeId },
+  }),
 
   "employee.created": (p) => ({ entityType: "employee", entityId: p.employeeId, after: p.after }),
   "employee.updated": (p) => ({

@@ -1,0 +1,216 @@
+import { beforeAll, describe, expect, it } from "vitest";
+
+import { GET as accountOptions } from "@/app/api/v1/employees/account-options/route";
+import { POST as linkAccount } from "@/app/api/v1/employees/[id]/link-account/route";
+import { withPlatform } from "@/lib/db";
+
+import { call, seedTenants, type Tenants } from "./harness";
+
+/**
+ * Connecting a login that exists to a person who exists.
+ *
+ * The case this is for: somebody invited directly holds an account with no
+ * employee record, and `inviteUser` refuses an account that is already
+ * active — so before this there was no way to connect the two, and the person
+ * was told to ask an HR team who had nothing to click.
+ *
+ * The rules worth holding are about not moving a login from one person to
+ * another. Attendance, leave and payslips all hang off the employee record a
+ * login points at.
+ */
+
+let t: Tenants;
+let strayUserId: string;
+let freeEmployeeId: string;
+
+beforeAll(async () => {
+  t = await seedTenants();
+
+  // An account with no employee record, the way `inviteWithRoles` leaves one.
+  strayUserId = await withPlatform(async (db) => {
+    const user = await db.user.create({
+      data: { companyId: t.acme.companyId, email: "stray@acme.test", status: "active" },
+      select: { id: true },
+    });
+    return user.id;
+  });
+
+  // A record with no account, the way HR leaves one before sending an invite.
+  freeEmployeeId = await withPlatform(async (db) => {
+    const employee = await db.employee.create({
+      data: {
+        companyId: t.acme.companyId,
+        employeeCode: "ACME-FREE",
+        firstName: "Unconnected",
+        workEmail: "unconnected@acme.test",
+        departmentId: t.acme.departmentId,
+        designationId: t.acme.designationId,
+        locationId: t.acme.locationId,
+        employmentType: "full_time",
+        status: "active",
+        joinDate: new Date("2026-01-05"),
+      },
+      select: { id: true },
+    });
+    return employee.id;
+  });
+});
+
+describe("the picker", () => {
+  it("offers the account that has no employee record", async () => {
+    const result = await call<{ id: string; email: string }[]>(
+      accountOptions,
+      "/api/v1/employees/account-options",
+      { as: t.acme.hr },
+    );
+
+    expect(result.status, result.error?.message).toBe(200);
+    expect(result.data.map((row) => row.id)).toContain(strayUserId);
+  });
+
+  it("does not offer accounts that already belong to somebody", async () => {
+    const result = await call<{ id: string }[]>(
+      accountOptions,
+      "/api/v1/employees/account-options",
+      { as: t.acme.hr },
+    );
+
+    expect(result.data.map((row) => row.id)).not.toContain(t.acme.employee.userId);
+  });
+
+  it("shows the other tenant nothing of ours", async () => {
+    const result = await call<{ id: string }[]>(
+      accountOptions,
+      "/api/v1/employees/account-options",
+      { as: t.globex.hr },
+    );
+
+    expect(result.data.map((row) => row.id)).not.toContain(strayUserId);
+  });
+});
+
+describe("linking", () => {
+  it("is refused to somebody who cannot manage users", async () => {
+    const result = await call(linkAccount, `/api/v1/employees/${freeEmployeeId}/link-account`, {
+      as: t.acme.employee,
+      method: "POST",
+      params: { id: freeEmployeeId },
+      body: { userId: strayUserId },
+    });
+
+    expect(result.status).toBe(403);
+  });
+
+  it("will not reach across tenants", async () => {
+    const result = await call(linkAccount, `/api/v1/employees/${freeEmployeeId}/link-account`, {
+      as: t.globex.hr,
+      method: "POST",
+      params: { id: freeEmployeeId },
+      body: { userId: strayUserId },
+    });
+
+    // Not theirs to see, so not found rather than forbidden.
+    expect(result.status).toBe(404);
+  });
+
+  it("connects the account to the record", async () => {
+    const result = await call<{ employeeId: string; userId: string }>(
+      linkAccount,
+      `/api/v1/employees/${freeEmployeeId}/link-account`,
+      {
+        as: t.acme.hr,
+        method: "POST",
+        params: { id: freeEmployeeId },
+        body: { userId: strayUserId },
+      },
+    );
+
+    expect(result.status, result.error?.message).toBe(200);
+
+    const row = await withPlatform((db) =>
+      db.employee.findFirstOrThrow({
+        where: { id: freeEmployeeId },
+        select: { userId: true },
+      }),
+    );
+    expect(row.userId).toBe(strayUserId);
+  });
+
+  it("is in the audit trail, because it changes who a login speaks for", async () => {
+    const row = await withPlatform((db) =>
+      db.auditLog.findFirst({
+        where: { companyId: t.acme.companyId, action: "user.linked_to_employee" },
+        orderBy: { createdAt: "desc" },
+        select: { actorUserId: true, entityId: true, after: true },
+      }),
+    );
+
+    expect(row?.actorUserId).toBe(t.acme.hr.userId);
+    expect(row?.entityId).toBe(strayUserId);
+    expect(JSON.stringify(row?.after)).toContain(freeEmployeeId);
+  });
+
+  it("no longer offers that account", async () => {
+    const result = await call<{ id: string }[]>(
+      accountOptions,
+      "/api/v1/employees/account-options",
+      { as: t.acme.hr },
+    );
+
+    expect(result.data.map((row) => row.id)).not.toContain(strayUserId);
+  });
+
+  it("refuses to take an account away from the employee holding it", async () => {
+    const other = await withPlatform(async (db) => {
+      const employee = await db.employee.create({
+        data: {
+          companyId: t.acme.companyId,
+          employeeCode: "ACME-FREE-2",
+          firstName: "Also unconnected",
+          departmentId: t.acme.departmentId,
+          designationId: t.acme.designationId,
+          locationId: t.acme.locationId,
+          employmentType: "full_time",
+          status: "active",
+          joinDate: new Date("2026-01-05"),
+        },
+        select: { id: true },
+      });
+      return employee.id;
+    });
+
+    const result = await call(linkAccount, `/api/v1/employees/${other}/link-account`, {
+      as: t.acme.hr,
+      method: "POST",
+      params: { id: other },
+      body: { userId: strayUserId },
+    });
+
+    expect(result.status).toBe(422);
+    expect(result.error?.code).toBe("BUSINESS_RULE");
+  });
+
+  it("refuses to give a second account to somebody who already has one", async () => {
+    const spare = await withPlatform(async (db) => {
+      const user = await db.user.create({
+        data: { companyId: t.acme.companyId, email: "spare@acme.test", status: "invited" },
+        select: { id: true },
+      });
+      return user.id;
+    });
+
+    const result = await call(
+      linkAccount,
+      `/api/v1/employees/${t.acme.employee.employeeId}/link-account`,
+      {
+        as: t.acme.hr,
+        method: "POST",
+        params: { id: t.acme.employee.employeeId },
+        body: { userId: spare },
+      },
+    );
+
+    expect(result.status).toBe(422);
+    expect(result.error?.code).toBe("BUSINESS_RULE");
+  });
+});

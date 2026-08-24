@@ -59,9 +59,11 @@
 | `DELETE /api/v1/employees/:id/emergency-contacts/:contactId` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `PATCH /api/v1/employees/:id/emergency-contacts/:contactId` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/employees/:id/invite` | `users.manage` | ✓ | ✓ | · | · |
+| `POST /api/v1/employees/:id/link-account` | `users.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/employees/:id/shifts` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/employees/:id/shifts` | `shifts.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/employees/:id/status` | `employee.edit` | ✓ | ✓ | · | · |
+| `GET /api/v1/employees/account-options` | `users.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/employees/manager-options` | `employee.view_all` | ✓ | ✓ | · | · |
 | `GET /api/v1/holidays` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/holidays` | `holidays.manage` | ✓ | ✓ | · | · |
@@ -136,4 +138,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**124 endpoints.** Permission-gated endpoints reachable per role — super_admin: 63 · hr_admin: 63 · manager: 7 · employee: 5.
+**126 endpoints.** Permission-gated endpoints reachable per role — super_admin: 65 · hr_admin: 65 · manager: 7 · employee: 5.

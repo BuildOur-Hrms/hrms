@@ -205,3 +205,13 @@ export const contactParamSchema = z.object({
   id: z.string().uuid(),
   contactId: z.string().uuid(),
 });
+
+/**
+ * Which account to attach to an employee record.
+ *
+ * An id rather than an email: the account is picked from a list of accounts
+ * that can actually be attached, and matching on a typed address would link
+ * whoever happened to own it.
+ */
+export const linkAccountSchema = z.object({ userId: z.string().uuid() });
+export type LinkAccountInput = z.infer<typeof linkAccountSchema>;

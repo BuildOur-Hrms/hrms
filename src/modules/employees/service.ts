@@ -830,3 +830,76 @@ export async function managerOptions(ctx: RequestContext, excludeId?: string) {
     },
   });
 }
+
+// ─────────────────────────────────────────────── linking an existing account
+
+/**
+ * Accounts that could be attached to an employee record.
+ *
+ * Only accounts with no employee record of their own: the relation is
+ * one-to-one, so attaching one that already has a person would take it away
+ * from them.
+ *
+ * Deleted employees still hold their `userId`, so an account belonging to one
+ * of those is correctly absent here — it is attached, just not to anybody
+ * visible. Reattaching it is a restore, not a link.
+ */
+export async function accountOptions(ctx: RequestContext) {
+  return ctx.db.user.findMany({
+    where: { employee: null, status: { not: "disabled" } },
+    orderBy: { email: "asc" },
+    select: { id: true, email: true, status: true, lastLoginAt: true },
+  });
+}
+
+/**
+ * Attach an existing account to an employee record.
+ *
+ * The gap this closes: `inviteUser` refuses an account that is already
+ * active, so somebody invited directly — the path that deliberately creates a
+ * login with no employee record — could never be connected to one afterwards.
+ * They signed in, found "ask your HR team to connect them", and there was
+ * nothing HR could do.
+ *
+ * Both sides must be free. An employee who already has a login is not
+ * quietly reassigned to a different person, and an account is not taken from
+ * the employee holding it, because either would hand one person's attendance,
+ * leave and payslips to another.
+ */
+export async function linkAccount(ctx: RequestContext, employeeId: string, userId: string) {
+  const employee = await ctx.db.employee.findFirst({
+    where: { id: employeeId },
+    select: { id: true, status: true, userId: true },
+  });
+  if (!employee) throw new NotFoundError("Employee");
+
+  if (employee.userId) {
+    throw new BusinessRuleError("This employee already has an account.", {
+      rule: "employee_has_account",
+    });
+  }
+  if (employee.status === "exited") {
+    throw new BusinessRuleError("This employee has exited.", { rule: "employee_exited" });
+  }
+
+  const user = await ctx.db.user.findFirst({
+    where: { id: userId },
+    select: { id: true, status: true, employee: { select: { id: true } } },
+  });
+  if (!user) throw new NotFoundError("User");
+
+  if (user.employee) {
+    throw new BusinessRuleError("That account belongs to another employee.", {
+      rule: "account_taken",
+    });
+  }
+  if (user.status === "disabled") {
+    throw new BusinessRuleError("That account is disabled.", { rule: "account_disabled" });
+  }
+
+  await ctx.db.employee.update({ where: { id: employeeId }, data: { userId } });
+
+  await emit("user.linked_to_employee", { userId, employeeId }, actor(ctx));
+
+  return { employeeId, userId };
+}
