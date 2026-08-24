@@ -10,6 +10,7 @@ import type {
   ChangeStatusInput,
   CreateEmployeeInput,
   EmergencyContactInput,
+  CompleteProfileInput,
   ListEmployeesInput,
   SetUpOwnProfileInput,
   UpdateEmployeeInput,
@@ -431,15 +432,69 @@ export async function updateOwnProfile(ctx: RequestContext, input: UpdateOwnProf
 
   const updated = await ctx.db.employee.update({
     where: { id: ctx.employeeId },
-    data: {
-      ...(input.phone !== undefined ? { phone: input.phone } : {}),
-      ...(input.personalEmail !== undefined ? { personalEmail: input.personalEmail } : {}),
-      ...(input.address !== undefined ? { address: input.address } : {}),
-    },
+    data: ownEditableData(input),
     select: employeeSelect,
   });
 
   await emitUpdate(ctx, ctx.employeeId, before, updated, Object.keys(input));
+  return toEmployeeDto(updated as unknown as EmployeeRow, "self");
+}
+
+/**
+ * The self-editable fields, as a Prisma `data` object.
+ *
+ * Built field by field rather than by spreading the input, so a key that is
+ * not on the allowlist cannot reach the update even if the schema ever grows
+ * one by accident. The schema is the first gate; this is the second.
+ */
+function ownEditableData(input: UpdateOwnProfileInput) {
+  return {
+    ...(input.firstName !== undefined ? { firstName: input.firstName } : {}),
+    ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
+    ...(input.phone !== undefined ? { phone: input.phone } : {}),
+    ...(input.personalEmail !== undefined ? { personalEmail: input.personalEmail } : {}),
+    ...(input.address !== undefined ? { address: input.address } : {}),
+    ...(input.dateOfBirth !== undefined
+      ? { dateOfBirth: input.dateOfBirth ? fromDateOnly(input.dateOfBirth) : null }
+      : {}),
+    ...(input.gender !== undefined ? { gender: input.gender } : {}),
+  };
+}
+
+/**
+ * Finishing setup after an invite: save whatever was filled in, and stamp it.
+ *
+ * One request rather than two, so a browser that dies between them cannot
+ * leave somebody marked as finished with none of their answers saved.
+ *
+ * An empty body is the "skip for now" case and is deliberately allowed. The
+ * prompt exists to be helpful; a prompt that cannot be dismissed is an
+ * obstacle.
+ */
+export async function completeOwnProfile(ctx: RequestContext, input: CompleteProfileInput) {
+  if (!ctx.employeeId) {
+    throw new BusinessRuleError("This account is not linked to an employee record.", {
+      rule: "no_employee_record",
+    });
+  }
+
+  const before = await ctx.db.employee.findFirst({
+    where: { id: ctx.employeeId },
+    select: employeeSelect,
+  });
+  if (!before) throw new NotFoundError("Employee");
+
+  const updated = await ctx.db.employee.update({
+    where: { id: ctx.employeeId },
+    data: { ...ownEditableData(input), profileCompletedAt: new Date() },
+    select: employeeSelect,
+  });
+
+  const changed = Object.keys(input);
+  if (changed.length > 0) {
+    await emitUpdate(ctx, ctx.employeeId, before, updated, changed);
+  }
+
   return toEmployeeDto(updated as unknown as EmployeeRow, "self");
 }
 

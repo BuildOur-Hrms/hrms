@@ -86,6 +86,7 @@
 | `GET /api/v1/me/profile` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `PATCH /api/v1/me/profile` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/me/profile` | `employee.create` | ✓ | ✓ | · | · |
+| `POST /api/v1/me/profile/complete` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/notifications` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/notifications/read` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/org/options` | _session_ | ✓ | ✓ | ✓ | ✓ |
@@ -135,4 +136,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**123 endpoints.** Permission-gated endpoints reachable per role — super_admin: 63 · hr_admin: 63 · manager: 7 · employee: 5.
+**124 endpoints.** Permission-gated endpoints reachable per role — super_admin: 63 · hr_admin: 63 · manager: 7 · employee: 5.

@@ -28,6 +28,8 @@ export interface PageSession {
   firstName: string | null;
   lastName: string | null;
   photoKey: string | null;
+  /** Null until somebody has been through the post-invite setup. */
+  profileCompletedAt: Date | null;
   company: { id: string; name: string; slug: string; timezone: string; currency: string };
 }
 
@@ -57,7 +59,14 @@ export const requireSession = cache(async function requireSession(): Promise<Pag
         select: {
           email: true,
           company: { select: { id: true, name: true, slug: true, timezone: true, currency: true } },
-          employee: { select: { firstName: true, lastName: true, photoKey: true } },
+          employee: {
+            select: {
+              firstName: true,
+              lastName: true,
+              photoKey: true,
+              profileCompletedAt: true,
+            },
+          },
         },
       });
       if (!user) redirect("/login");
@@ -68,6 +77,7 @@ export const requireSession = cache(async function requireSession(): Promise<Pag
         firstName: user.employee?.firstName ?? null,
         lastName: user.employee?.lastName ?? null,
         photoKey: user.employee?.photoKey ?? null,
+        profileCompletedAt: user.employee?.profileCompletedAt ?? null,
         company: user.company,
       } satisfies PageSession;
     });

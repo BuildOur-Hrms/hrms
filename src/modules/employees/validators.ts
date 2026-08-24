@@ -120,14 +120,51 @@ export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
  * anything that would alter their place in the org, their pay, or their
  * lifecycle.
  */
-export const SELF_EDITABLE_FIELDS = ["phone", "personalEmail", "address"] as const;
+/**
+ * The complete set of fields somebody may change on their own record.
+ *
+ * The line is between what is true about a person and what a company decided
+ * about them. Their name, birthday and phone number are theirs — they will
+ * correct a misspelling or change a surname, and making them ask HR to do it
+ * is friction with no safety in it. Department, designation, manager,
+ * employment type, join date, status and work email are not on this list and
+ * never will be: an employee who could set those could re-grade themselves,
+ * which is the whole thing the permission model exists to stop.
+ *
+ * Name is a deviation from the blueprint, which lists only phone, personal
+ * email, address, photo and emergency contacts (docs/02-…, Module 16). It is
+ * deliberate, and it is audited like any other change to an employee record.
+ */
+export const SELF_EDITABLE_FIELDS = [
+  "firstName",
+  "lastName",
+  "phone",
+  "personalEmail",
+  "address",
+  "dateOfBirth",
+  "gender",
+] as const;
 
 export const updateOwnProfileSchema = z.object({
+  firstName: z.string().trim().min(1, "Required").max(80).optional(),
+  lastName: z.string().trim().max(80).nullish(),
   phone: z.string().trim().max(30).nullish(),
   personalEmail: z.string().trim().toLowerCase().email().max(160).nullish(),
   address: z.string().trim().max(2000).nullish(),
+  dateOfBirth: dateOnly.nullish(),
+  gender: z.enum(genders).nullish(),
 });
 export type UpdateOwnProfileInput = z.infer<typeof updateOwnProfileSchema>;
+
+/**
+ * Finishing setup after an invite.
+ *
+ * The same fields, all optional, plus the stamp that stops the prompt coming
+ * back. Sent empty by "skip for now" — somebody who does not want to fill
+ * this in on their first morning should not be cornered by it.
+ */
+export const completeProfileSchema = updateOwnProfileSchema;
+export type CompleteProfileInput = z.infer<typeof completeProfileSchema>;
 
 export const changeStatusSchema = z.object({
   status: z.enum(employeeStatuses),

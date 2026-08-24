@@ -29,6 +29,7 @@ export interface EmployeeRow {
   confirmationDate: Date | null;
   exitDate: Date | null;
   noticePeriodDays: number | null;
+  profileCompletedAt: Date | null;
   createdAt: Date;
   department: { id: string; name: string } | null;
   designation: { id: string; title: string; level: number } | null;
@@ -80,6 +81,7 @@ export function toEmployeeDto(row: EmployeeRow, visibility: Visibility) {
     confirmationDate: dateOnly(row.confirmationDate),
     exitDate: dateOnly(row.exitDate),
     noticePeriodDays: row.noticePeriodDays,
+    profileCompletedAt: row.profileCompletedAt,
   };
 
   // A manager gets the employment picture but not the personal one.
@@ -118,6 +120,7 @@ export const employeeSelect = {
   confirmationDate: true,
   exitDate: true,
   noticePeriodDays: true,
+  profileCompletedAt: true,
   createdAt: true,
   department: { select: { id: true, name: true } },
   designation: { select: { id: true, title: true, level: true } },

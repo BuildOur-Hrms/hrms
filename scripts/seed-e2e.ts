@@ -222,7 +222,22 @@ async function main() {
       const employee = existing
         ? await db.employee.update({
             where: { id: existing.id },
-            data: { userId: user.id, managerId, status: "active" },
+            data: {
+              userId: user.id,
+              managerId,
+              status: "active",
+              // Back to the state an invited account actually arrives in, so
+              // the post-invite setup journey is repeatable rather than
+              // passing exactly once.
+              profileCompletedAt: null,
+              firstName,
+              lastName: "Tester",
+              phone: null,
+              personalEmail: null,
+              dateOfBirth: null,
+              gender: null,
+              address: null,
+            },
             select: { id: true },
           })
         : await db.employee.create({

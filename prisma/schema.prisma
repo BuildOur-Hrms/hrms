@@ -500,6 +500,12 @@ model Employee {
   exitDate         DateTime?      @map("exit_date") @db.Date
   /// Overrides the company default when set.
   noticePeriodDays Int?           @map("notice_period_days")
+  /// When this person finished setting up their own details.
+  ///
+  /// A stamp rather than a guess from empty fields: somebody who genuinely
+  /// has no landline should not be nagged forever, and "they have seen the
+  /// form" is a different fact from "the form has values in it".
+  profileCompletedAt DateTime?    @map("profile_completed_at") @db.Timestamptz(6)
   createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt        DateTime?      @map("deleted_at") @db.Timestamptz(6)

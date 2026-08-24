@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api, applyServerErrors } from "@/lib/api-client";
 import { fullName, initials } from "@/lib/utils";
 
+import { CompleteProfile } from "./complete-profile";
 import { SetUpProfile } from "./set-up-profile";
 import {
   emergencyContactSchema,
@@ -48,10 +49,12 @@ interface Profile {
   personalEmail: string | null;
   phone: string | null;
   dateOfBirth: string | null;
+  gender: string | null;
   address: string | null;
   status: string;
   employmentType: string;
   joinDate: string | null;
+  profileCompletedAt: string | null;
   probationEndDate: string | null;
   department: { id: string; name: string } | null;
   designation: { id: string; title: string } | null;
@@ -67,6 +70,17 @@ interface Profile {
 }
 
 const profileKey = ["me", "profile"] as const;
+
+const GENDER_LABEL: Record<string, string> = {
+  female: "Female",
+  male: "Male",
+  other: "Other",
+  undisclosed: "Prefer not to say",
+};
+
+function genderLabel(value: string | null): string | null {
+  return value ? (GENDER_LABEL[value] ?? value) : null;
+}
 
 export function ProfileView({
   /** Whether this account may create its own employee record. */
@@ -120,6 +134,25 @@ export function ProfileView({
     );
   }
 
+  // Straight after an invite the record holds only what HR typed to create
+  // it. Ask the person for the rest once, before showing them a profile that
+  // is mostly blanks.
+  if (data.profileCompletedAt === null) {
+    return (
+      <CompleteProfile
+        prefill={{
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          personalEmail: data.personalEmail,
+          address: data.address,
+          dateOfBirth: data.dateOfBirth,
+          gender: data.gender ?? null,
+        }}
+      />
+    );
+  }
+
   const name = fullName(data.firstName, data.lastName);
 
   return (
@@ -143,9 +176,9 @@ export function ProfileView({
       <Card>
         <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
           <div>
-            <CardTitle>Contact details</CardTitle>
+            <CardTitle>About you</CardTitle>
             <CardDescription>
-              These are yours to keep current. Everything else is maintained by HR.
+              Yours to keep current. Your role, team and dates are maintained by HR.
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
@@ -157,7 +190,8 @@ export function ProfileView({
           <Detail label="Work email" value={data.workEmail} hint="Managed by HR" />
           <Detail label="Personal email" value={data.personalEmail} />
           <Detail label="Phone" value={data.phone} />
-          <Detail label="Date of birth" value={data.dateOfBirth} hint="Managed by HR" />
+          <Detail label="Date of birth" value={data.dateOfBirth} />
+          <Detail label="Gender" value={genderLabel(data.gender)} />
           <Detail label="Address" value={data.address} className="sm:col-span-2" />
         </CardContent>
       </Card>
@@ -288,8 +322,12 @@ function EditProfileDialog({
   } = useForm<UpdateOwnProfileInput>({
     resolver: zodResolver(updateOwnProfileSchema),
     defaultValues: {
+      firstName: profile.firstName,
+      lastName: profile.lastName ?? "",
       phone: profile.phone ?? "",
       personalEmail: profile.personalEmail ?? "",
+      dateOfBirth: profile.dateOfBirth ?? "",
+      gender: (profile.gender ?? "") as UpdateOwnProfileInput["gender"],
       address: profile.address ?? "",
     },
   });
@@ -298,8 +336,12 @@ function EditProfileDialog({
     setFormError(null);
     try {
       await api.patch("/me/profile", {
+        firstName: values.firstName,
+        lastName: values.lastName || null,
         phone: values.phone || null,
         personalEmail: values.personalEmail || null,
+        dateOfBirth: values.dateOfBirth || null,
+        gender: values.gender || null,
         address: values.address || null,
       });
       toast.success("Profile updated");
@@ -322,9 +364,9 @@ function EditProfileDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit contact details</DialogTitle>
+          <DialogTitle>Edit your details</DialogTitle>
           <DialogDescription>
-            Only these fields are yours to change. Ask HR for anything else.
+            These are yours to change. Your role, team and dates belong to HR.
           </DialogDescription>
         </DialogHeader>
 
@@ -334,6 +376,50 @@ function EditProfileDialog({
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
           ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="firstName">First name</Label>
+              <Input id="firstName" {...register("firstName")} />
+              {errors.firstName ? (
+                <p className="text-destructive text-sm">{errors.firstName.message}</p>
+              ) : null}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lastName">Last name</Label>
+              <Input id="lastName" {...register("lastName")} />
+              {errors.lastName ? (
+                <p className="text-destructive text-sm">{errors.lastName.message}</p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="dateOfBirth">Date of birth</Label>
+              <Input id="dateOfBirth" type="date" {...register("dateOfBirth")} />
+              {errors.dateOfBirth ? (
+                <p className="text-destructive text-sm">{errors.dateOfBirth.message}</p>
+              ) : null}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="gender">Gender</Label>
+              {/* A plain select: the form is driven by react-hook-form, and a
+                  controlled component here would need a Controller for no gain. */}
+              <select
+                id="gender"
+                {...register("gender")}
+                className="border-input bg-card h-8 rounded-lg border px-2.5 text-sm"
+              >
+                <option value="">Rather not say</option>
+                {Object.entries(GENDER_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
           <div className="grid gap-2">
             <Label htmlFor="phone">Phone</Label>

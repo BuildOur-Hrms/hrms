@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CalendarCheck, CalendarDays, Clock, FileClock } from "lucide-react";
+import { CalendarCheck, CalendarDays, Clock, FileClock, UserRoundPen } from "lucide-react";
 
 import { ButtonLink } from "@/components/shared/button-link";
 import { PanelTile } from "@/components/shared/panel-tile";
@@ -64,9 +64,36 @@ export default async function MySpacePage() {
 
   const totalLeave = data.balances.reduce((sum, b) => sum + b.current, 0);
 
+  /**
+   * Shown until somebody has been through setup once.
+   *
+   * Here rather than as a forced redirect: an employee whose first act is to
+   * clock in should be able to, and the prompt will still be waiting.
+   */
+  const setupPrompt =
+    session.profileCompletedAt === null ? (
+      <Card className="border-brand/30 bg-brand-soft/40 mb-4">
+        <CardContent className="flex flex-wrap items-center gap-3 p-4">
+          <div className="bg-brand-soft text-brand-soft-foreground flex size-9 shrink-0 items-center justify-center rounded-lg">
+            <UserRoundPen className="size-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium">Finish setting up your profile</p>
+            <p className="text-muted-foreground text-sm">
+              Your name, contact details and emergency contacts. It takes a minute.
+            </p>
+          </div>
+          <ButtonLink href="/me/profile" size="sm" className="ml-auto">
+            Set it up
+          </ButtonLink>
+        </CardContent>
+      </Card>
+    ) : null;
+
   return (
     <>
       <PageHeader title={greeting} description={session.company.name} />
+      {setupPrompt}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <PanelTile
