@@ -65,6 +65,7 @@
 | `POST /api/v1/employees/:id/status` | `employee.edit` | ✓ | ✓ | · | · |
 | `GET /api/v1/employees/account-options` | `users.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/employees/manager-options` | `employee.view_all` | ✓ | ✓ | · | · |
+| `GET /api/v1/employees/unlinked-options` | `users.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/holidays` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/holidays` | `holidays.manage` | ✓ | ✓ | · | · |
 | `DELETE /api/v1/holidays/:id` | `holidays.manage` | ✓ | ✓ | · | · |
@@ -138,4 +139,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**126 endpoints.** Permission-gated endpoints reachable per role — super_admin: 65 · hr_admin: 65 · manager: 7 · employee: 5.
+**127 endpoints.** Permission-gated endpoints reachable per role — super_admin: 66 · hr_admin: 66 · manager: 7 · employee: 5.

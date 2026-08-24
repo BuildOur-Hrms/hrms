@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { GET as accountOptions } from "@/app/api/v1/employees/account-options/route";
+import { GET as unlinkedOptions } from "@/app/api/v1/employees/unlinked-options/route";
+import { POST as inviteUser } from "@/app/api/v1/users/invite/route";
 import { POST as linkAccount } from "@/app/api/v1/employees/[id]/link-account/route";
 import { withPlatform } from "@/lib/db";
 
@@ -209,6 +211,81 @@ describe("linking", () => {
         body: { userId: spare },
       },
     );
+
+    expect(result.status).toBe(422);
+    expect(result.error?.code).toBe("BUSINESS_RULE");
+  });
+});
+
+describe("inviting somebody directly", () => {
+  it("offers the records that have no account", async () => {
+    const result = await call<{ id: string }[]>(
+      unlinkedOptions,
+      "/api/v1/employees/unlinked-options",
+      { as: t.acme.hr },
+    );
+
+    expect(result.status, result.error?.message).toBe(200);
+    // `freeEmployeeId` was linked above; the second spare record was not.
+    expect(result.data.map((row) => row.id)).not.toContain(freeEmployeeId);
+    expect(result.data.length).toBeGreaterThan(0);
+  });
+
+  it("attaches the record as the invite goes out", async () => {
+    const spare = await withPlatform(async (db) => {
+      const employee = await db.employee.create({
+        data: {
+          companyId: t.acme.companyId,
+          employeeCode: "ACME-INVITE-ATTACH",
+          firstName: "Attached",
+          departmentId: t.acme.departmentId,
+          designationId: t.acme.designationId,
+          locationId: t.acme.locationId,
+          employmentType: "full_time",
+          status: "active",
+          joinDate: new Date("2026-02-02"),
+        },
+        select: { id: true },
+      });
+      return employee.id;
+    });
+
+    const roles = await withPlatform((db) =>
+      db.role.findMany({ where: { companyId: t.acme.companyId }, select: { id: true }, take: 1 }),
+    );
+
+    const result = await call<{ userId: string }>(inviteUser, "/api/v1/users/invite", {
+      as: t.acme.hr,
+      method: "POST",
+      body: {
+        email: "attached@acme.test",
+        roleIds: roles.map((role) => role.id),
+        employeeId: spare,
+      },
+    });
+
+    expect(result.status, result.error?.message).toBe(201);
+
+    const row = await withPlatform((db) =>
+      db.employee.findFirstOrThrow({ where: { id: spare }, select: { userId: true } }),
+    );
+    expect(row.userId).toBe(result.data.userId);
+  });
+
+  it("refuses a record that already has one", async () => {
+    const roles = await withPlatform((db) =>
+      db.role.findMany({ where: { companyId: t.acme.companyId }, select: { id: true }, take: 1 }),
+    );
+
+    const result = await call(inviteUser, "/api/v1/users/invite", {
+      as: t.acme.hr,
+      method: "POST",
+      body: {
+        email: "second-account@acme.test",
+        roleIds: roles.map((role) => role.id),
+        employeeId: t.acme.employee.employeeId,
+      },
+    });
 
     expect(result.status).toBe(422);
     expect(result.error?.code).toBe("BUSINESS_RULE");

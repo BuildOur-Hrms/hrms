@@ -30,6 +30,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -381,15 +388,38 @@ function RolesForm({ user, roles, onDone }: { user: AppUser; roles: Role[]; onDo
   );
 }
 
+interface UnlinkedEmployee {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  employeeCode: string;
+  workEmail: string | null;
+  designation: { title: string } | null;
+}
+
 function InviteForm({ roles, onDone }: { roles: Role[]; onDone: () => void }) {
   const [email, setEmail] = useState("");
   const [roleIds, setRoleIds] = useState<string[]>([]);
+  const [employeeId, setEmployeeId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
 
+  // Records with nobody signed in against them. Offered so an invite meant
+  // for a member of staff arrives attached to their person, rather than
+  // producing a login that cannot be connected to one afterwards.
+  const unlinked = useQuery({
+    queryKey: ["employees", "unlinked-options"],
+    queryFn: () => api.get<UnlinkedEmployee[]>("/employees/unlinked-options"),
+  });
+  const candidates = unlinked.data ?? [];
+
   const submit = useMutation({
     mutationFn: () =>
-      api.post<{ userId: string; inviteUrl?: string }>("/users/invite", { email, roleIds }),
+      api.post<{ userId: string; inviteUrl?: string }>("/users/invite", {
+        email,
+        roleIds,
+        employeeId: employeeId || null,
+      }),
     onSuccess: (result) => {
       toast.success("Invite created");
       // Outside production the API hands the link back, so development needs
@@ -451,6 +481,40 @@ function InviteForm({ roles, onDone }: { roles: Role[]; onDone: () => void }) {
           onChange={(e) => setEmail(e.target.value)}
         />
       </div>
+
+      {candidates.length > 0 ? (
+        <div className="grid gap-2">
+          <Label htmlFor="invite-employee">Employee record</Label>
+          <Select
+            items={Object.fromEntries(
+              candidates.map((row) => [row.id, `${row.firstName} ${row.lastName ?? ""}`.trim()]),
+            )}
+            value={employeeId}
+            onValueChange={(value) => {
+              setEmployeeId(value ?? "");
+              // Their work email is almost always the address being invited,
+              // and typing it twice is how the two end up disagreeing.
+              const picked = candidates.find((row) => row.id === value);
+              if (picked?.workEmail && !email) setEmail(picked.workEmail);
+            }}
+          >
+            <SelectTrigger id="invite-employee" className="w-full">
+              <SelectValue placeholder="None — this account is not a member of staff" />
+            </SelectTrigger>
+            <SelectContent>
+              {candidates.map((row) => (
+                <SelectItem key={row.id} value={row.id}>
+                  {[row.firstName, row.lastName].filter(Boolean).join(" ")} · {row.employeeCode}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-muted-foreground text-xs">
+            Leave this empty for an administrator. Attaching a record now is what lets the person
+            see their own profile, attendance and leave.
+          </p>
+        </div>
+      ) : null}
 
       <div className="grid gap-2">
         <Label>Roles</Label>

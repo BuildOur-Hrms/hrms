@@ -9,6 +9,8 @@ const bodySchema = z.object({
   email: z.string().trim().toLowerCase().email().max(160),
   /** At least one: an account with no roles can sign in and see nothing. */
   roleIds: z.array(z.string().uuid()).min(1, "Choose at least one role"),
+  /** Optional: an administrator has no employee record, a new hire does. */
+  employeeId: z.string().uuid().nullish(),
 });
 type Body = z.infer<typeof bodySchema>;
 

@@ -248,10 +248,16 @@ async function emitRoles(ctx: RequestContext, userId: string): Promise<void> {
  * Roles are applied here rather than left for a second step, because an
  * account with no roles can sign in and see nothing, which looks like the
  * product being broken.
+ *
+ * An employee record may be attached as it goes out. Optional, because the
+ * administrator this path exists for genuinely has none — but offered,
+ * because a member of staff invited this way by mistake lands on an account
+ * with nothing behind it, and an account that has been signed in to cannot
+ * be invited again. Attaching here is cheaper than linking afterwards.
  */
 export async function inviteWithRoles(
   ctx: RequestContext,
-  input: { email: string; roleIds: string[] },
+  input: { email: string; roleIds: string[]; employeeId?: string | null },
 ) {
   const roles = await ctx.db.role.findMany({
     where: { id: { in: input.roleIds } },
@@ -259,7 +265,23 @@ export async function inviteWithRoles(
   });
   if (roles.length !== input.roleIds.length) throw new NotFoundError("Role");
 
-  const result = await inviteUser(ctx, { email: input.email, employeeId: null });
+  if (input.employeeId) {
+    const employee = await ctx.db.employee.findFirst({
+      where: { id: input.employeeId },
+      select: { id: true, userId: true },
+    });
+    if (!employee) throw new NotFoundError("Employee");
+    if (employee.userId) {
+      throw new BusinessRuleError("That employee already has an account.", {
+        rule: "employee_has_account",
+      });
+    }
+  }
+
+  const result = await inviteUser(ctx, {
+    email: input.email,
+    employeeId: input.employeeId ?? null,
+  });
 
   for (const role of roles) {
     await ctx.db.userRole.upsert({

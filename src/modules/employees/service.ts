@@ -903,3 +903,25 @@ export async function linkAccount(ctx: RequestContext, employeeId: string, userI
 
   return { employeeId, userId };
 }
+
+/**
+ * Employee records with no account, for the invite form.
+ *
+ * The mirror of `accountOptions`. Offered when somebody is invited directly,
+ * so an invite meant for a member of staff can be attached to their record at
+ * the moment it is sent rather than discovered to be unattachable later.
+ */
+export async function unlinkedEmployeeOptions(ctx: RequestContext) {
+  return ctx.db.employee.findMany({
+    where: { userId: null, status: { not: "exited" } },
+    orderBy: { firstName: "asc" },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      employeeCode: true,
+      workEmail: true,
+      designation: { select: { title: true } },
+    },
+  });
+}
