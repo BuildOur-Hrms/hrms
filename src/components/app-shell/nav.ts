@@ -33,7 +33,8 @@ export type NavIconName =
   | "users"
   | "settings"
   | "audit"
-  | "reports";
+  | "reports"
+  | "tasks";
 
 export interface NavItem {
   label: string;
@@ -71,6 +72,12 @@ export const NAV_SECTIONS: NavSection[] = [
         permissions: ["leave.view_own"],
       },
       {
+        label: "My tasks",
+        href: "/me/tasks",
+        icon: "tasks",
+        permissions: ["performance.view_own"],
+      },
+      {
         label: "Notifications",
         href: "/me/notifications",
         icon: "notifications",
@@ -98,6 +105,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/team/leave-approvals",
         icon: "leave",
         permissions: ["leave.approve"],
+      },
+      {
+        label: "Team tasks",
+        href: "/team/tasks",
+        icon: "tasks",
+        permissions: ["performance.view_team"],
       },
       {
         label: "Team reports",
@@ -151,6 +164,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/hr/announcements",
         icon: "notifications",
         permissions: ["announcements.create"],
+      },
+      {
+        label: "Task completion",
+        href: "/hr/tasks",
+        icon: "tasks",
+        permissions: ["performance.view_all"],
       },
       {
         label: "Reports",

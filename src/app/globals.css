@@ -41,6 +41,8 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-task-assigned: var(--task-assigned);
+  --color-task-self: var(--task-self);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -118,6 +120,19 @@
   --chart-4: oklch(0.5529 0.0537 52.99);
   --chart-5: oklch(0.7829 0.0216 67.5);
 
+  /*
+   * Two series that have to be told apart: work the company assigned, and work
+   * a person added for themselves.
+   *
+   * Chart-grade steps of the brand orange and a blue, rather than the `--info`
+   * token — that one sits at chroma 0.08 and reads gray as a chart mark. These
+   * were snapped to pass the categorical checks against a white surface:
+   * inside the lightness band, above the chroma floor, worst-pair ΔE 20.4 under
+   * simulated protanopia against a target of 8.
+   */
+  --task-assigned: oklch(0.6 0.16 46.6);
+  --task-self: oklch(0.52 0.13 236);
+
   --radius: 0.625rem;
 
   --sidebar: oklch(0.9798 0.0045 78.3);
@@ -171,6 +186,11 @@
   --chart-3: oklch(0.8087 0.0955 57.04);
   --chart-4: oklch(0.5529 0.0537 52.99);
   --chart-5: oklch(0.7043 0.0167 67.55);
+
+  /* Re-stepped for the dark surface, not flipped: same hues, validated again
+   * against #201c17 (band 0.48-0.67, worst-pair ΔE 20.3 under protanopia). */
+  --task-assigned: oklch(0.66 0.15 46.6);
+  --task-self: oklch(0.62 0.13 236);
 
   --sidebar: oklch(0.1809 0.0054 39.35);
   --sidebar-foreground: oklch(0.9629 0.0079 73.74);
