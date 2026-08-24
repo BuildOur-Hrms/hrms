@@ -69,8 +69,26 @@ Order matters: migrate first, then roll out. Releases are backward-compatible
 by policy, so the old image runs fine against the new schema for the minutes
 between the two.
 
+On Vercel this is `scripts/vercel-build.sh`, which Vercel runs in place of
+`build` because npm prefers a `vercel-build` script when one exists. It applies
+pending migrations, then builds. A failed migration fails the build, and Vercel
+does not move traffic to a deployment that did not build — so the previous
+deployment keeps serving rather than new code landing in front of a schema that
+cannot answer it.
+
+It needs `DIRECT_DATABASE_URL` set in the Vercel project, pointing at the
+**owner's** direct connection. Migrations are DDL, which `app_user` cannot run,
+and a pooled endpoint cannot hold the advisory lock `migrate` takes. The build
+refuses to start rather than falling back to `DATABASE_URL`.
+
+Only production deployments migrate. Previews share the production database and
+are readers of the schema, not authors of it.
+
+To apply migrations by hand — a schema that has drifted, or a deploy that
+predates the build step:
+
 ```bash
-npx prisma migrate deploy       # CI step, before the app rollout
+DIRECT_DATABASE_URL="<owner connection>" npx prisma migrate deploy
 ```
 
 **Every deploy:** CI green including the isolation and permission-matrix
