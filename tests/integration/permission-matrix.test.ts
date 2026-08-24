@@ -79,9 +79,13 @@ const CASES: Case[] = [
     permission: "department.manage",
     handler: createDepartment,
     path: "/api/v1/departments",
-    options: () => ({
-      body: { name: `Dept ${Math.random().toString(36).slice(2, 8)}`, code: "D1" },
-    }),
+    options: () => {
+      // A fresh code each call. A fixed one turns every attempt after the
+      // first into a 409, which still satisfies "not 403" — so the test would
+      // keep passing while no longer testing that a department can be made.
+      const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+      return { body: { name: `Dept ${suffix}`, code: `D-${suffix}` } };
+    },
   },
   {
     name: "POST /employees",

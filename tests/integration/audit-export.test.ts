@@ -110,12 +110,22 @@ describe("the export itself", () => {
   });
 
   it("cannot be deleted afterwards, like everything else in the trail", async () => {
+    /*
+     * Two defences, and which one answers depends on who is connected.
+     *
+     * The application role has no DELETE grant on `audit_logs` at all, so it
+     * is stopped by permission (42501) before reaching the trigger. A
+     * superuser gets past the grant and meets the append-only trigger
+     * instead. Either refusal is the trail holding; asserting only the
+     * trigger passed locally and failed in CI, which is the wrong way round
+     * for a test of a security property.
+     */
     await expect(
       withPlatform((db) =>
         db.$executeRawUnsafe(
           `DELETE FROM audit_logs WHERE company_id = '${t.acme.companyId}' AND action = 'audit.exported'`,
         ),
       ),
-    ).rejects.toThrow(/append-only/i);
+    ).rejects.toThrow(/append-only|permission denied/i);
   });
 });
