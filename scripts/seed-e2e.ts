@@ -261,6 +261,11 @@ async function main() {
               employmentType: "full_time",
               status: "active",
               joinDate: JOIN_DATE,
+              // Same rule as the update above. CI starts from an empty
+              // database and only ever takes this branch, so leaving it out
+              // here made the fixture mean one thing locally and another in
+              // the run that matters.
+              profileCompletedAt: role === "hr_admin" ? new Date() : null,
             },
             select: { id: true },
           });
