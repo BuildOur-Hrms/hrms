@@ -67,6 +67,7 @@
 | `PATCH /api/v1/employees/:id/emergency-contacts/:contactId` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/employees/:id/invite` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/employees/:id/link-account` | `users.manage` | ✓ | ✓ | · | · |
+| `GET /api/v1/employees/:id/offboarding` | `offboarding.view_own` | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/employees/:id/onboarding` | `onboarding.view_team` | ✓ | ✓ | ✓ | · |
 | `POST /api/v1/employees/:id/onboarding` | `onboarding.create` | ✓ | ✓ | · | · |
 | `GET /api/v1/employees/:id/shifts` | _session_ | ✓ | ✓ | ✓ | ✓ |
@@ -101,6 +102,15 @@
 | `POST /api/v1/me/profile/complete` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/notifications` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/notifications/read` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/offboarding` | `offboarding.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/offboarding` | `offboarding.create` | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/offboarding/:id` | `offboarding.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/offboarding/:id/approve` | `offboarding.approve` | ✓ | ✓ | ✓ | · |
+| `POST /api/v1/offboarding/:id/cancel` | `offboarding.manage` | ✓ | ✓ | · | · |
+| `POST /api/v1/offboarding/:id/clear` | `offboarding.manage` | ✓ | ✓ | · | · |
+| `POST /api/v1/offboarding/:id/complete` | `offboarding.manage` | ✓ | ✓ | · | · |
+| `POST /api/v1/offboarding/:id/confirm` | `offboarding.manage` | ✓ | ✓ | · | · |
+| `POST /api/v1/offboarding/:id/settlement` | `offboarding.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/onboarding/pipeline` | `onboarding.view_all` | ✓ | ✓ | · | · |
 | `GET /api/v1/org/options` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/permissions` | `roles.view_all` | ✓ | ✓ | · | · |
@@ -149,4 +159,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**137 endpoints.** Permission-gated endpoints reachable per role — super_admin: 76 · hr_admin: 76 · manager: 10 · employee: 7.
+**147 endpoints.** Permission-gated endpoints reachable per role — super_admin: 86 · hr_admin: 86 · manager: 15 · employee: 11.

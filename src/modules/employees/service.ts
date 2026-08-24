@@ -5,7 +5,7 @@ import { resolveScope, type Scope } from "@/lib/permissions";
 import { fromDateOnly } from "@/lib/utils";
 import { inviteUser } from "@/modules/auth/service";
 
-import { blockingTasks } from "@/modules/checklists/service";
+import { blockingTasks } from "@/modules/checklists/gate";
 
 import { employeeSelect, resolveVisibility, toEmployeeDto, type EmployeeRow } from "./dto";
 import type {

@@ -93,6 +93,42 @@ const AUDIT_MAP: {
     after: { employeeId: p.employeeId, kind: p.kind, status: p.status },
   }),
 
+  "offboarding.submitted": (p) => ({
+    entityType: "offboarding_request",
+    entityId: p.requestId,
+    after: { employeeId: p.employeeId },
+  }),
+  "offboarding.approved": (p) => ({
+    entityType: "offboarding_request",
+    entityId: p.requestId,
+    after: { employeeId: p.employeeId },
+  }),
+  "offboarding.confirmed": (p) => ({
+    entityType: "offboarding_request",
+    entityId: p.requestId,
+    after: { employeeId: p.employeeId, lastWorkingDay: p.lastWorkingDay },
+  }),
+  "offboarding.cleared": (p) => ({
+    entityType: "offboarding_request",
+    entityId: p.requestId,
+    after: { employeeId: p.employeeId },
+  }),
+  "offboarding.settled": (p) => ({
+    entityType: "offboarding_request",
+    entityId: p.requestId,
+    after: { employeeId: p.employeeId },
+  }),
+  "offboarding.completed": (p) => ({
+    entityType: "offboarding_request",
+    entityId: p.requestId,
+    after: { employeeId: p.employeeId },
+  }),
+  "offboarding.cancelled": (p) => ({
+    entityType: "offboarding_request",
+    entityId: p.requestId,
+    after: { employeeId: p.employeeId },
+  }),
+
   "employee.created": (p) => ({ entityType: "employee", entityId: p.employeeId, after: p.after }),
   "employee.updated": (p) => ({
     entityType: "employee",

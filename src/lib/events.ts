@@ -60,6 +60,14 @@ export interface DomainEventMap {
     kind: string;
     status: string;
   };
+
+  "offboarding.submitted": { requestId: string; employeeId: string };
+  "offboarding.approved": { requestId: string; employeeId: string };
+  "offboarding.confirmed": { requestId: string; employeeId: string; lastWorkingDay: string };
+  "offboarding.cleared": { requestId: string; employeeId: string };
+  "offboarding.settled": { requestId: string; employeeId: string };
+  "offboarding.completed": { requestId: string; employeeId: string };
+  "offboarding.cancelled": { requestId: string; employeeId: string };
   "announcement.changed": {
     announcementId: string;
     action: "drafted" | "published" | "deleted";

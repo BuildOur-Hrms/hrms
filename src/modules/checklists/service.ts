@@ -4,7 +4,8 @@ import { emit, type EventActor } from "@/lib/events";
 import { resolveScope } from "@/lib/permissions";
 import { fromDateOnly } from "@/lib/utils";
 
-import { planTasks, progressOf, requiredTasksSettled, type RoleHolders } from "./rules";
+import { blockingTasks, checklistIsSettled } from "./gate";
+import { planTasks, progressOf, type RoleHolders } from "./rules";
 import type {
   CompleteTaskInput,
   CreateTemplateInput,
@@ -27,6 +28,8 @@ import type {
  *     through is a list, not a live view of a template being edited around
  *     them.
  */
+
+export { blockingTasks, checklistIsSettled };
 
 function actor(ctx: RequestContext): EventActor {
   return {
@@ -483,38 +486,6 @@ export async function setTaskStatus(ctx: RequestContext, taskId: string, input: 
   );
 
   return checklistFor(ctx, task.employeeId, task.kind);
-}
-
-/**
- * The required tasks still standing between somebody and the next step.
- *
- * Read by the employee module when activating a new joiner, so the gate is
- * defined once and both sides agree on what "ready" means.
- */
-export async function blockingTasks(
-  ctx: RequestContext,
-  employeeId: string,
-  kind: "onboarding" | "offboarding",
-): Promise<string[]> {
-  const tasks = await ctx.db.checklistTask.findMany({
-    where: { employeeId, kind, isRequired: true, status: "pending" },
-    orderBy: { sortOrder: "asc" },
-    select: { title: true },
-  });
-  return tasks.map((task) => task.title);
-}
-
-/** Whether every required task is settled, for a checklist that exists. */
-export async function checklistIsSettled(
-  ctx: RequestContext,
-  employeeId: string,
-  kind: "onboarding" | "offboarding",
-): Promise<boolean> {
-  const tasks = await ctx.db.checklistTask.findMany({
-    where: { employeeId, kind },
-    select: { isRequired: true, status: true, dueDate: true },
-  });
-  return requiredTasksSettled(toStates(tasks));
 }
 
 /**
