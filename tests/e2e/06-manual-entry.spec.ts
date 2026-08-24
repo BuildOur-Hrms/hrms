@@ -28,12 +28,20 @@ test.describe("HR", () => {
   test("enters a day by hand and sees it on the grid", async ({ page }) => {
     await page.goto("/hr/attendance");
 
-    const dayPicker = page.getByLabel("Day", { exact: true });
-    await dayPicker.fill(DAY);
-    // Wait for the grid to actually be on that day before clicking into it.
-    // Without this the click can land on the previous render and the dialog
-    // opens on today — which is what CI caught and a fast local machine hid.
-    await expect(dayPicker).toHaveValue(DAY);
+    /*
+     * Wait for the grid to hold that day's data, not merely that day's date.
+     *
+     * Changing the date starts a fresh query, and while it runs the table is
+     * replaced by a skeleton — so a row located before the swap is detached
+     * by the time it is clicked, and the dialog never opens. Asserting on the
+     * input's value does not help: the value is set the moment the state is,
+     * which is exactly when the swap begins.
+     */
+    const loaded = page.waitForResponse(
+      (response) => response.url().includes("/attendance/overview") && response.url().includes(DAY),
+    );
+    await page.getByLabel("Day", { exact: true }).fill(DAY);
+    await loaded;
 
     const row = page.locator("tr").filter({ hasText: "Eli" });
     await expect(row).toBeVisible();
