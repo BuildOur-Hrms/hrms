@@ -35,7 +35,8 @@ export type NavIconName =
   | "audit"
   | "reports"
   | "tasks"
-  | "hiring";
+  | "hiring"
+  | "onboarding";
 
 export interface NavItem {
   label: string;
@@ -177,6 +178,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/hr/recruitment",
         icon: "hiring",
         permissions: ["recruitment.view_all"],
+      },
+      {
+        label: "Onboarding",
+        href: "/hr/onboarding",
+        icon: "onboarding",
+        permissions: ["onboarding.view_all"],
       },
       {
         label: "Task completion",

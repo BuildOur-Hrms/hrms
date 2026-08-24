@@ -39,6 +39,8 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { EditEmployeeDialog } from "./edit-employee-dialog";
+import { OnboardingTab } from "@/components/checklists/onboarding-tab";
+
 import { LinkAccountDialog } from "./link-account-dialog";
 import { ShiftAssignment } from "./shift-assignment";
 import {
@@ -105,12 +107,16 @@ export function EmployeeDetail({
   canDelete,
   canInvite,
   canManageShifts,
+  canManageOnboarding,
+  today,
 }: {
   id: string;
   canEdit: boolean;
   canDelete: boolean;
   canInvite: boolean;
   canManageShifts: boolean;
+  canManageOnboarding: boolean;
+  today: string;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -243,6 +249,14 @@ export function EmployeeDetail({
           <TabsTrigger value="employment">Employment</TabsTrigger>
           {canSeePersonal ? <TabsTrigger value="contacts">Emergency contacts</TabsTrigger> : null}
           {employee.user !== undefined ? <TabsTrigger value="account">Account</TabsTrigger> : null}
+          {/*
+            Offered while somebody is still arriving, and afterwards only if
+            there is a checklist to look back at. A tab that is empty for
+            every long-standing employee is a tab in the way.
+          */}
+          {employee.status === "onboarding" || canManageOnboarding ? (
+            <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
+          ) : null}
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
@@ -392,6 +406,17 @@ export function EmployeeDetail({
             </Card>
           </TabsContent>
         ) : null}
+        {employee.status === "onboarding" || canManageOnboarding ? (
+          <TabsContent value="onboarding" className="mt-4">
+            <OnboardingTab
+              employeeId={id}
+              employeeName={name}
+              joinDate={employee.joinDate ?? null}
+              canManage={canManageOnboarding}
+              today={today}
+            />
+          </TabsContent>
+        ) : null}
       </Tabs>
 
       <EditEmployeeDialog employee={employee as never} open={editOpen} onOpenChange={setEditOpen} />
@@ -484,13 +509,13 @@ function StatusDialog({
 
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label>New status</Label>
+            <Label htmlFor="new-status">New status</Label>
             <Select
               items={Object.fromEntries(options.map((o) => [o, STATUS_LABELS[o] ?? o]))}
               value={status}
               onValueChange={(value) => setStatus(value ?? "")}
             >
-              <SelectTrigger>
+              <SelectTrigger id="new-status">
                 <SelectValue placeholder="Choose" />
               </SelectTrigger>
               <SelectContent>

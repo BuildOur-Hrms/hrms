@@ -22,6 +22,10 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
       canDelete={pageCan(session, "employee.delete")}
       canInvite={pageCan(session, "users.manage")}
       canManageShifts={pageCan(session, "shifts.manage")}
+      canManageOnboarding={pageCan(session, "onboarding.create")}
+      // Today is settled on the server so the overdue marks do not depend on
+      // what the reader's laptop clock says.
+      today={new Date().toISOString().slice(0, 10)}
     />
   );
 }

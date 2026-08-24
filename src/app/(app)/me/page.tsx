@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CalendarCheck, CalendarDays, Clock, FileClock, UserRoundPen } from "lucide-react";
 
+import { MyChecklistCard } from "@/components/checklists/my-checklist-card";
 import { ButtonLink } from "@/components/shared/button-link";
 import { PanelTile } from "@/components/shared/panel-tile";
 import { PageHeader } from "@/components/shared/page-header";
@@ -94,6 +95,14 @@ export default async function MySpacePage() {
     <>
       <PageHeader title={greeting} description={session.company.name} />
       {setupPrompt}
+
+      {/*
+        Anything handed to this person on a checklist. Renders nothing at all
+        when there is none, which is everybody who is neither arriving nor
+        leaving — a permanent "no tasks" card would be in the way for years to
+        serve the fortnight when it matters.
+      */}
+      <MyChecklistCard today={new Date().toISOString().slice(0, 10)} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <PanelTile

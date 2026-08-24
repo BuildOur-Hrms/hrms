@@ -350,6 +350,82 @@ async function main() {
   });
 
   /*
+   * Somebody arriving, with a checklist to follow.
+   *
+   * Reset each run — the journey starts a checklist and activates them, and
+   * an employee who is already active gives the next run nothing to do.
+   */
+  await withPlatform(async (db) => {
+    const existing = await db.employee.findFirst({
+      where: { companyId, employeeCode: "E2E-JOINER" },
+      select: { id: true },
+    });
+    const joinDate = new Date();
+    joinDate.setUTCDate(joinDate.getUTCDate() + 7);
+    const data = {
+      firstName: "Nadia",
+      lastName: "Arrives",
+      status: "onboarding" as const,
+      departmentId: org.departmentId,
+      designationId: org.designationId,
+      locationId: org.locationId,
+      managerId: managerEmployeeId,
+      employmentType: "full_time" as const,
+      joinDate,
+    };
+    const joiner = existing
+      ? await db.employee.update({ where: { id: existing.id }, data, select: { id: true } })
+      : await db.employee.create({
+          data: { companyId, employeeCode: "E2E-JOINER", ...data },
+          select: { id: true },
+        });
+
+    // Whatever a previous run started.
+    await db.checklistTask.deleteMany({ where: { employeeId: joiner.id } });
+
+    const template = await db.checklistTemplate.findFirst({
+      where: { companyId, kind: "onboarding", name: "E2E joiner checklist" },
+      select: { id: true },
+    });
+    if (!template) {
+      await db.checklistTemplate.create({
+        data: {
+          companyId,
+          kind: "onboarding",
+          name: "E2E joiner checklist",
+          isDefault: true,
+          tasks: {
+            create: [
+              {
+                companyId,
+                title: "Laptop ready",
+                assignee: "it",
+                dueOffsetDays: -2,
+                sortOrder: 1,
+              },
+              {
+                companyId,
+                title: "Sign the contract",
+                assignee: "employee",
+                dueOffsetDays: 0,
+                sortOrder: 2,
+              },
+              {
+                companyId,
+                title: "Team lunch",
+                assignee: "manager",
+                dueOffsetDays: 7,
+                isRequired: false,
+                sortOrder: 3,
+              },
+            ],
+          },
+        },
+      });
+    }
+  });
+
+  /*
    * Topped back up, so the leave journey tests approval rather than rejection
    * however many times it has run before.
    *
