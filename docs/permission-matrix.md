@@ -36,6 +36,13 @@
 | `POST /api/v1/auth/logout` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/auth/me` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/auth/reset-password` | _public_ | — | — | — | — |
+| `GET /api/v1/checklist-tasks` | `onboarding.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `PATCH /api/v1/checklist-tasks/:id` | `onboarding.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/checklist-templates` | `onboarding.view_all` | ✓ | ✓ | · | · |
+| `POST /api/v1/checklist-templates` | `onboarding.manage` | ✓ | ✓ | · | · |
+| `DELETE /api/v1/checklist-templates/:id` | `onboarding.manage` | ✓ | ✓ | · | · |
+| `GET /api/v1/checklist-templates/:id` | `onboarding.view_all` | ✓ | ✓ | · | · |
+| `PATCH /api/v1/checklist-templates/:id` | `onboarding.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/companies/current` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `PATCH /api/v1/companies/current` | `company.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/cron/attendance-daily-calc` | _scheduler_ | — | — | — | — |
@@ -60,6 +67,8 @@
 | `PATCH /api/v1/employees/:id/emergency-contacts/:contactId` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/employees/:id/invite` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/employees/:id/link-account` | `users.manage` | ✓ | ✓ | · | · |
+| `GET /api/v1/employees/:id/onboarding` | `onboarding.view_team` | ✓ | ✓ | ✓ | · |
+| `POST /api/v1/employees/:id/onboarding` | `onboarding.create` | ✓ | ✓ | · | · |
 | `GET /api/v1/employees/:id/shifts` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/employees/:id/shifts` | `shifts.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/employees/:id/status` | `employee.edit` | ✓ | ✓ | · | · |
@@ -92,6 +101,7 @@
 | `POST /api/v1/me/profile/complete` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/notifications` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/notifications/read` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/onboarding/pipeline` | `onboarding.view_all` | ✓ | ✓ | · | · |
 | `GET /api/v1/org/options` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/permissions` | `roles.view_all` | ✓ | ✓ | · | · |
 | `GET /api/v1/recruitment/applications` | _session_ | ✓ | ✓ | ✓ | ✓ |
@@ -139,4 +149,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**127 endpoints.** Permission-gated endpoints reachable per role — super_admin: 66 · hr_admin: 66 · manager: 7 · employee: 5.
+**137 endpoints.** Permission-gated endpoints reachable per role — super_admin: 76 · hr_admin: 76 · manager: 10 · employee: 7.

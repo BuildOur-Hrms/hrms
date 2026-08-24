@@ -26,6 +26,7 @@ export type OffboardingState =
 
 export interface TemplateTask {
   title: string;
+  description?: string | null;
   assignee: ChecklistAssignee;
   dueOffsetDays: number;
   isRequired: boolean;

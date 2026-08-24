@@ -77,6 +77,22 @@ const AUDIT_MAP: {
     after: { employeeId: p.employeeId },
   }),
 
+  "checklist.template_saved": (p) => ({
+    entityType: "checklist_template",
+    entityId: p.templateId,
+    after: { kind: p.kind, name: p.name },
+  }),
+  "checklist.started": (p) => ({
+    entityType: "employee",
+    entityId: p.employeeId,
+    after: { kind: p.kind, templateId: p.templateId, taskCount: p.taskCount },
+  }),
+  "checklist.task_settled": (p) => ({
+    entityType: "checklist_task",
+    entityId: p.taskId,
+    after: { employeeId: p.employeeId, kind: p.kind, status: p.status },
+  }),
+
   "employee.created": (p) => ({ entityType: "employee", entityId: p.employeeId, after: p.after }),
   "employee.updated": (p) => ({
     entityType: "employee",

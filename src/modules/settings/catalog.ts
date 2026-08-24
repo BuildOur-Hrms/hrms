@@ -86,6 +86,20 @@ export const SETTINGS_CATALOG = {
     label: "Allow negative leave balance",
   },
 
+  /**
+   * How much notice somebody owes when they resign.
+   *
+   * The company default. An employee's own record may override it, because
+   * senior contracts routinely say something different from the handbook.
+   */
+  "offboarding.notice_period_days": {
+    scope: "company",
+    schema: z.number().int().min(0).max(180),
+    default: 30,
+    group: "leave",
+    label: "Notice period (days)",
+  },
+
   "security.password_min_length": {
     scope: "global",
     schema: z.number().int().min(8).max(64),

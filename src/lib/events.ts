@@ -46,6 +46,20 @@ export interface DomainEventMap {
   /// Only ever an account that was never used - see deleteUnusedAccount.
   "user.deleted": { userId: string };
   "user.linked_to_employee": { userId: string; employeeId: string };
+
+  "checklist.template_saved": { templateId: string; kind: string; name: string };
+  "checklist.started": {
+    employeeId: string;
+    kind: string;
+    templateId: string;
+    taskCount: number;
+  };
+  "checklist.task_settled": {
+    taskId: string;
+    employeeId: string;
+    kind: string;
+    status: string;
+  };
   "announcement.changed": {
     announcementId: string;
     action: "drafted" | "published" | "deleted";

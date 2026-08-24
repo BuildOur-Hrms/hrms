@@ -5,6 +5,8 @@ import { resolveScope, type Scope } from "@/lib/permissions";
 import { fromDateOnly } from "@/lib/utils";
 import { inviteUser } from "@/modules/auth/service";
 
+import { blockingTasks } from "@/modules/checklists/service";
+
 import { employeeSelect, resolveVisibility, toEmployeeDto, type EmployeeRow } from "./dto";
 import type {
   ChangeStatusInput,
@@ -529,6 +531,26 @@ export async function changeStatus(ctx: RequestContext, id: string, input: Chang
       `Cannot move an employee from ${employee.status} to ${input.status}.`,
       { rule: "invalid_status_transition", from: employee.status, to: input.status },
     );
+  }
+
+  /*
+   * Activating a new joiner waits on their checklist.
+   *
+   * The gate the onboarding module describes, asked for here rather than
+   * duplicated: whoever is activating somebody is the one who needs telling
+   * what is still outstanding, and they need it named, not counted.
+   *
+   * Only when a checklist exists. A company that never set one up is not
+   * thereby prevented from activating anybody.
+   */
+  if (input.status === "active" && employee.status === "onboarding") {
+    const outstanding = await blockingTasks(ctx, id, "onboarding");
+    if (outstanding.length > 0) {
+      throw new BusinessRuleError(`Onboarding is not finished: ${outstanding.join(", ")}.`, {
+        rule: "onboarding_incomplete",
+        outstanding,
+      });
+    }
   }
 
   if (input.status === "exited" && !input.exitDate) {
