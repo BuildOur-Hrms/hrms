@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useExits, useResign } from "@/hooks/use-checklists";
+import { useMyExits, useResign } from "@/hooks/use-checklists";
 
 /**
  * Resigning, from the employee's own profile.
@@ -30,7 +30,7 @@ import { useExits, useResign } from "@/hooks/use-checklists";
  * now".
  */
 export function ResignCard() {
-  const exits = useExits();
+  const exits = useMyExits();
   const [open, setOpen] = useState(false);
 
   const mine = (exits.data ?? []).filter((row) => !["completed", "cancelled"].includes(row.status));

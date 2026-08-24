@@ -466,6 +466,26 @@ describe("who can see an exit", () => {
     expect(result.data).toEqual([]);
   });
 
+  it("does not hand HR somebody else's resignation as their own", async () => {
+    /*
+     * HR sees every exit in the company, so the screen that asks "have I
+     * resigned" cannot use that list — it was showing the first exit in the
+     * company as the viewer's own. `mine` is what makes the question
+     * answerable.
+     */
+    const all = await call<unknown[]>(listExits, "/api/v1/offboarding", { as: t.acme.hr });
+    expect(all.data.length).toBeGreaterThan(0);
+
+    const own = await call<{ employee: { id: string } }[]>(listExits, "/api/v1/offboarding", {
+      as: t.acme.hr,
+      query: { mine: "true" },
+    });
+
+    expect(own.status).toBe(200);
+    expect(own.data.every((row) => row.employee.id === t.acme.hr.employeeId)).toBe(true);
+    expect(own.data.length).toBeLessThan(all.data.length);
+  });
+
   it("shows an employee only their own", async () => {
     const result = await call<{ employee: { id: string } }[]>(listExits, "/api/v1/offboarding", {
       as: t.acme.employee,

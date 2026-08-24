@@ -464,7 +464,10 @@ export async function listExits(ctx: RequestContext, input: ListExitsInput) {
 
   const where: Record<string, unknown> = input.status ? { status: input.status } : {};
 
-  if (scope === "team") {
+  if (input.mine) {
+    // Asked for explicitly, so scope does not widen it.
+    where["employeeId"] = me;
+  } else if (scope === "team") {
     where["OR"] = [{ employeeId: me }, { employee: { managerId: me } }];
   } else if (scope !== "all") {
     where["employeeId"] = me;

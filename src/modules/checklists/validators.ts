@@ -110,5 +110,13 @@ export const listExitsSchema = z.object({
   status: z
     .enum(["initiated", "in_progress", "cleared", "settled", "completed", "cancelled"])
     .optional(),
+  /**
+   * Only the caller's own.
+   *
+   * Scope alone is not enough: HR can see every exit in the company, so a
+   * screen asking "have I resigned" would otherwise be handed somebody
+   * else's resignation and show it as theirs.
+   */
+  mine: z.coerce.boolean().optional(),
 });
 export type ListExitsInput = z.infer<typeof listExitsSchema>;

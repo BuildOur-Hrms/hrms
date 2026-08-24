@@ -207,6 +207,20 @@ export function useExits(status?: ExitStatus) {
   });
 }
 
+/**
+ * The caller's own exits, and nobody else's.
+ *
+ * Separate from `useExits` because HR sees the whole company through that
+ * one: a screen asking "have I resigned" was being handed the first exit in
+ * the company and showing it as theirs.
+ */
+export function useMyExits() {
+  return useQuery({
+    queryKey: exitKeys.list("mine"),
+    queryFn: () => api.get<ExitRequest[]>("/offboarding", { mine: "true" }),
+  });
+}
+
 export function useEmployeeExit(employeeId: string) {
   return useQuery({
     queryKey: exitKeys.forEmployee(employeeId),
