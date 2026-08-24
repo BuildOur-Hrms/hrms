@@ -5,13 +5,42 @@ import { STATE } from "./fixtures";
 /**
  * Hiring, driven through the screens.
  *
- * The whole arc in one journey — role, candidate, rounds, offer, conversion —
- * because each step only matters if the one before it left the board in the
- * state the next one needs.
+ * The whole arc in one journey — role, candidate, rounds, offer — because
+ * each step only matters if the one before it left the board in the state the
+ * next one needs.
  */
 
-const ROLE = `Platform Engineer ${Date.now().toString().slice(-5)}`;
-const CANDIDATE = `rue-${Date.now().toString().slice(-6)}@example.test`;
+/**
+ * Names scoped to the project, and deterministic within it.
+ *
+ * Desktop and mobile run this journey against one database, so a shared name
+ * means the second project finds two of everything and every locator becomes
+ * ambiguous. Deterministic rather than timestamped because the fixture clears
+ * the pipeline on each seed — a fresh value per run would leave the board
+ * filling with abandoned roles instead.
+ */
+function scope(project: string) {
+  return {
+    role: `Platform Engineer (${project})`,
+    name: `Rue ${project}`,
+    email: `rue-${project}@example.test`,
+  };
+}
+
+/**
+ * The card for one role.
+ *
+ * Matched on containing both the title and the board button, rather than on
+ * the title alone: `hasText` matches every ancestor, and picking the deepest
+ * one lands on a paragraph that holds no buttons at all.
+ */
+function roleCard(page: import("@playwright/test").Page, role: string) {
+  return page
+    .locator("div")
+    .filter({ hasText: role })
+    .filter({ has: page.getByRole("button", { name: /Open board/ }) })
+    .last();
+}
 
 test.describe.configure({ mode: "serial" });
 
@@ -19,10 +48,11 @@ test.describe("HR", () => {
   test.use({ storageState: STATE.hr });
 
   test("creates a role and publishes it", async ({ page }) => {
+    const { role } = scope(test.info().project.name);
     await page.goto("/hr/recruitment");
 
     await page.getByRole("button", { name: "New role" }).click();
-    await page.getByLabel("Title").fill(ROLE);
+    await page.getByLabel("Title").fill(role);
     await page.getByLabel("Department").click();
     await page.getByRole("option", { name: "Engineering" }).click();
     await page.getByLabel("Designation").click();
@@ -31,61 +61,55 @@ test.describe("HR", () => {
     await page.getByRole("option", { name: "Head office" }).click();
     await page.getByRole("button", { name: "Create it" }).click();
 
-    const card = page.locator("div").filter({ hasText: ROLE }).last();
-    await expect(card).toBeVisible();
+    await expect(roleCard(page, role)).toBeVisible();
 
-    await page.getByRole("button", { name: "Publish" }).first().click();
-    await expect(page.getByText("open").first()).toBeVisible();
+    await roleCard(page, role).getByRole("button", { name: "Publish" }).click();
+    // Exact: the card also says "1 opening" and "Open board", and a substring
+    // match on "open" finds all three.
+    await expect(roleCard(page, role).getByText("open", { exact: true })).toBeVisible();
   });
 
   test("adds a candidate onto the board", async ({ page }) => {
+    const { role, name, email } = scope(test.info().project.name);
     await page.goto("/hr/recruitment");
-    await page
-      .locator("div")
-      .filter({ hasText: ROLE })
+    await roleCard(page, role)
       .getByRole("button", { name: /Open board/ })
-      .last()
       .click();
 
     await page.getByRole("button", { name: "Add a candidate" }).click();
-    await page.getByLabel("First name").fill("Rue");
-    await page.getByLabel("Last name").fill("Nakamura");
-    await page.getByLabel("Email").fill(CANDIDATE);
+    await page.getByLabel("First name").fill(name);
+    await page.getByLabel("Email").fill(email);
     await page.getByRole("button", { name: "Add them" }).click();
 
-    // The card lands in the first column.
-    await expect(page.getByText("Rue Nakamura")).toBeVisible();
+    await expect(page.getByText(name)).toBeVisible();
   });
 
-  test("moves them along and books a round", async ({ page }) => {
+  test("moves them along", async ({ page }) => {
+    const { role, name } = scope(test.info().project.name);
     await page.goto("/hr/recruitment");
-    await page
-      .locator("div")
-      .filter({ hasText: ROLE })
+    await roleCard(page, role)
       .getByRole("button", { name: /Open board/ })
-      .last()
       .click();
 
-    await page.getByText("Rue Nakamura").click();
-    await expect(page.getByRole("heading", { name: "Rue Nakamura" })).toBeVisible();
+    await page.getByText(name).click();
+    const drawer = page.getByRole("dialog");
+    await expect(drawer.getByRole("heading", { name })).toBeVisible();
 
-    await page.getByRole("button", { name: "Interview", exact: true }).click();
-    await expect(page.getByText("Interview").first()).toBeVisible();
+    await drawer.getByRole("button", { name: "Interview", exact: true }).click();
+    await expect(drawer.getByText("Interview").first()).toBeVisible();
   });
 
   test("cannot reject without saying why", async ({ page }) => {
+    const { role, name } = scope(test.info().project.name);
     await page.goto("/hr/recruitment");
-    await page
-      .locator("div")
-      .filter({ hasText: ROLE })
+    await roleCard(page, role)
       .getByRole("button", { name: /Open board/ })
-      .last()
       .click();
-    await page.getByText("Rue Nakamura").click();
+    await page.getByText(name).click();
 
-    await page.getByRole("button", { name: "Reject", exact: true }).click();
-    // The button stays disabled until a reason is typed.
-    await expect(page.getByRole("button", { name: "Reject this application" })).toBeDisabled();
+    const drawer = page.getByRole("dialog");
+    await drawer.getByRole("button", { name: "Reject", exact: true }).click();
+    await expect(drawer.getByRole("button", { name: "Reject this application" })).toBeDisabled();
   });
 });
 

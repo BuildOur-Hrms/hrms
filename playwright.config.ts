@@ -63,10 +63,16 @@ export default defineConfig({
       name: "mobile",
       use: { ...devices["Pixel 7"] },
       dependencies: ["setup"],
-      // The sign-in journey itself runs once, on desktop. Repeating it here
-      // would spend the login rate-limit budget to re-prove something that
-      // does not depend on the viewport; `06-mobile` covers what does.
-      testIgnore: /01-auth\.spec\.ts/,
+      /*
+       * Two journeys run once, on desktop.
+       *
+       * `01-auth` would spend the login rate-limit budget re-proving
+       * something that does not depend on the viewport. `09-profile-setup`
+       * asserts a state that exists once per account — the setup prompt is
+       * dismissed for good the first time — so a second project always finds
+       * it already gone.
+       */
+      testIgnore: /0(1-auth|9-profile-setup)\.spec\.ts/,
     },
   ],
 

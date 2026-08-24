@@ -293,23 +293,32 @@ async function main() {
   });
   const employeeId = await account("employee", E2E_USERS.employee, "Eli", managerEmployeeId);
 
-  // Topped back up, so the leave journey tests approval rather than rejection
-  // however many times it has run before.
-  const year = new Date().getUTCFullYear();
-  await withPlatform((db) =>
-    db.leaveBalance.upsert({
-      where: {
-        companyId_employeeId_leaveTypeId_year: {
-          companyId,
-          employeeId,
-          leaveTypeId: org.leaveTypeId,
-          year,
+  /*
+   * Topped back up, so the leave journey tests approval rather than rejection
+   * however many times it has run before.
+   *
+   * This year and next. Balance is held per leave year, and the journey books
+   * a day a couple of months out — which crosses into January for any run in
+   * the last stretch of the year. Allocating both means the date the journey
+   * picks never decides whether it passes.
+   */
+  const thisYear = new Date().getUTCFullYear();
+  for (const year of [thisYear, thisYear + 1]) {
+    await withPlatform((db) =>
+      db.leaveBalance.upsert({
+        where: {
+          companyId_employeeId_leaveTypeId_year: {
+            companyId,
+            employeeId,
+            leaveTypeId: org.leaveTypeId,
+            year,
+          },
         },
-      },
-      create: { companyId, employeeId, leaveTypeId: org.leaveTypeId, year, opening: 40 },
-      update: { opening: 40, accrued: 0, used: 0, carriedForward: 0, adjusted: 0 },
-    }),
-  );
+        create: { companyId, employeeId, leaveTypeId: org.leaveTypeId, year, opening: 40 },
+        update: { opening: 40, accrued: 0, used: 0, carriedForward: 0, adjusted: 0 },
+      }),
+    );
+  }
 
   // ── tasks, with a few months behind them so the trend has a shape.
   //
@@ -321,6 +330,17 @@ async function main() {
   );
 
   await withPlatform((db) => db.jobTask.deleteMany({ where: { companyId } }));
+
+  // The hiring pipeline, cleared for the same reason: a journey that creates
+  // a role each run leaves a board nobody can write a stable locator against.
+  // Children first — offers and interviews hang off applications.
+  await withPlatform(async (db) => {
+    await db.offer.deleteMany({ where: { companyId } });
+    await db.interview.deleteMany({ where: { companyId } });
+    await db.application.deleteMany({ where: { companyId } });
+    await db.candidate.deleteMany({ where: { companyId } });
+    await db.jobPosting.deleteMany({ where: { companyId } });
+  });
 
   const now = new Date();
   const window = [0, 1, 2, 3, 4, 5].map((back) => {

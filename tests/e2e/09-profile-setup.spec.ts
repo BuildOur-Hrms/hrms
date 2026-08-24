@@ -30,14 +30,22 @@ test.describe("a new joiner", () => {
   test("fills it in and lands on their profile", async ({ page }) => {
     await page.goto("/me/profile");
 
-    await page.getByLabel("Last name").fill("Okonkwo");
+    /*
+     * Deliberately not the name.
+     *
+     * Renaming the fixture employee here broke every other spec that finds
+     * somebody by name — the specs run against one database, and this one
+     * was quietly changing what the others look for. That an employee may
+     * correct their own name is proven in the integration suite, where it
+     * costs nothing to change it back.
+     */
     await page.getByLabel("Phone").fill("+91 90000 00000");
     await page.getByLabel("Personal email").fill("eli@personal.test");
     await page.getByRole("button", { name: "Save and continue" }).click();
 
     // The form is replaced by the real profile.
     await expect(page.getByText("Welcome — tell us about you")).toHaveCount(0);
-    await expect(page.getByText("Eli Okonkwo").first()).toBeVisible();
+    await expect(page.getByText("+91 90000 00000")).toBeVisible();
   });
 
   test("is not prompted again", async ({ page }) => {

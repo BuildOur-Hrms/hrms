@@ -28,7 +28,12 @@ test.describe("HR", () => {
   test("enters a day by hand and sees it on the grid", async ({ page }) => {
     await page.goto("/hr/attendance");
 
-    await page.getByLabel("Day", { exact: true }).fill(DAY);
+    const dayPicker = page.getByLabel("Day", { exact: true });
+    await dayPicker.fill(DAY);
+    // Wait for the grid to actually be on that day before clicking into it.
+    // Without this the click can land on the previous render and the dialog
+    // opens on today — which is what CI caught and a fast local machine hid.
+    await expect(dayPicker).toHaveValue(DAY);
 
     const row = page.locator("tr").filter({ hasText: "Eli" });
     await expect(row).toBeVisible();
