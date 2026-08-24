@@ -10,17 +10,26 @@ import { STATE } from "./fixtures";
  * the screen unchanged is indistinguishable from one that does not save.
  */
 
-/** A weekday in the recent past — after the fixture's join date, before today. */
-function recentWeekday(): string {
+/**
+ * The most recent weekday before today, and how many days back that is.
+ *
+ * Reached by clicking the grid's own "Previous day" control rather than by
+ * filling the date input. Filling it sets the DOM value without React seeing
+ * a change — the picker reads correctly, the grid stays on today, and the
+ * dialog opens for the wrong day. That passed locally and failed in CI, which
+ * is the wrong way round for a test to be wrong.
+ */
+function recentWeekday(): { day: string; back: number } {
   const date = new Date();
-  date.setUTCDate(date.getUTCDate() - 10);
-  while (date.getUTCDay() === 0 || date.getUTCDay() === 6) {
+  let back = 0;
+  do {
     date.setUTCDate(date.getUTCDate() - 1);
-  }
-  return date.toISOString().slice(0, 10);
+    back += 1;
+  } while (date.getUTCDay() === 0 || date.getUTCDay() === 6);
+  return { day: date.toISOString().slice(0, 10), back };
 }
 
-const DAY = recentWeekday();
+const { day: DAY, back: DAYS_BACK } = recentWeekday();
 
 test.describe("HR", () => {
   test.use({ storageState: STATE.hr });
@@ -28,20 +37,12 @@ test.describe("HR", () => {
   test("enters a day by hand and sees it on the grid", async ({ page }) => {
     await page.goto("/hr/attendance");
 
-    /*
-     * Wait for the grid to hold that day's data, not merely that day's date.
-     *
-     * Changing the date starts a fresh query, and while it runs the table is
-     * replaced by a skeleton — so a row located before the swap is detached
-     * by the time it is clicked, and the dialog never opens. Asserting on the
-     * input's value does not help: the value is set the moment the state is,
-     * which is exactly when the swap begins.
-     */
-    const loaded = page.waitForResponse(
-      (response) => response.url().includes("/attendance/overview") && response.url().includes(DAY),
-    );
-    await page.getByLabel("Day", { exact: true }).fill(DAY);
-    await loaded;
+    for (let step = 0; step < DAYS_BACK; step += 1) {
+      await page.getByLabel("Previous day").click();
+    }
+    // The grid is on that day, and the state the button changed is the same
+    // state the Enter button reads.
+    await expect(page.getByLabel("Day", { exact: true })).toHaveValue(DAY);
 
     const row = page.locator("tr").filter({ hasText: "Eli" });
     await expect(row).toBeVisible();
