@@ -197,11 +197,7 @@ export async function approveResignation(ctx: RequestContext, id: string) {
     select: REQUEST_FIELDS,
   });
 
-  await emit(
-    "offboarding.approved",
-    { requestId: id, employeeId: request.employeeId },
-    actor(ctx),
-  );
+  await emit("offboarding.approved", { requestId: id, employeeId: request.employeeId }, actor(ctx));
   return updated;
 }
 
@@ -216,11 +212,7 @@ export async function approveResignation(ctx: RequestContext, id: string) {
  * those three facts belong together: a date, a list of things to do before
  * it, and a status that tells the rest of the app what is happening.
  */
-export async function confirmResignation(
-  ctx: RequestContext,
-  id: string,
-  input: ConfirmExitInput,
-) {
+export async function confirmResignation(ctx: RequestContext, id: string, input: ConfirmExitInput) {
   const request = await loadForActor(ctx, id);
   assertAdvance(request.status, "in_progress");
 
@@ -235,11 +227,7 @@ export async function confirmResignation(
     select: { id: true, managerId: true, noticePeriodDays: true },
   });
 
-  const companyDefault = await getSetting(
-    ctx.db,
-    ctx.companyId,
-    "offboarding.notice_period_days",
-  );
+  const companyDefault = await getSetting(ctx.db, ctx.companyId, "offboarding.notice_period_days");
   const noticeDays = employee.noticePeriodDays ?? companyDefault;
 
   const settled =
@@ -353,11 +341,7 @@ export async function markCleared(ctx: RequestContext, id: string) {
     select: REQUEST_FIELDS,
   });
 
-  await emit(
-    "offboarding.cleared",
-    { requestId: id, employeeId: request.employeeId },
-    actor(ctx),
-  );
+  await emit("offboarding.cleared", { requestId: id, employeeId: request.employeeId }, actor(ctx));
   return updated;
 }
 
@@ -369,11 +353,7 @@ export async function markCleared(ctx: RequestContext, id: string) {
  * captured is the input a settlement run will need, and the arithmetic waits
  * for the module that owns it.
  */
-export async function recordSettlement(
-  ctx: RequestContext,
-  id: string,
-  input: SettlementInput,
-) {
+export async function recordSettlement(ctx: RequestContext, id: string, input: SettlementInput) {
   const request = await loadForActor(ctx, id);
   assertAdvance(request.status, "settled");
 
@@ -388,11 +368,7 @@ export async function recordSettlement(
     select: REQUEST_FIELDS,
   });
 
-  await emit(
-    "offboarding.settled",
-    { requestId: id, employeeId: request.employeeId },
-    actor(ctx),
-  );
+  await emit("offboarding.settled", { requestId: id, employeeId: request.employeeId }, actor(ctx));
   return updated;
 }
 
@@ -436,11 +412,7 @@ export async function completeExit(ctx: RequestContext, id: string) {
     { employeeId: employee.id, from: employee.status, to: "exited" },
     actor(ctx),
   );
-  await emit(
-    "offboarding.completed",
-    { requestId: id, employeeId: employee.id },
-    actor(ctx),
-  );
+  await emit("offboarding.completed", { requestId: id, employeeId: employee.id }, actor(ctx));
 
   return updated;
 }
