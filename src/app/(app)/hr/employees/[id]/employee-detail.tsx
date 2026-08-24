@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Mail, Pencil, ShieldAlert, Trash2, UserCog } from "lucide-react";
+import { Link2, Loader2, Mail, Pencil, ShieldAlert, Trash2, UserCog } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -39,6 +39,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { EditEmployeeDialog } from "./edit-employee-dialog";
+import { LinkAccountDialog } from "./link-account-dialog";
 import { ShiftAssignment } from "./shift-assignment";
 import {
   employeeKeys,
@@ -118,6 +119,7 @@ export function EmployeeDetail({
   const [statusOpen, setStatusOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
 
   const employee = data as unknown as EmployeeDetailData | undefined;
   const invite = useInviteEmployee(id);
@@ -200,19 +202,31 @@ export function EmployeeDetail({
             </Button>
           ) : null}
           {canInvite && !employee.user && employee.status !== "exited" ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void sendInvite()}
-              disabled={invite.isPending}
-            >
-              {invite.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Mail className="size-4" />
-              )}
-              Send invite
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void sendInvite()}
+                disabled={invite.isPending}
+              >
+                {invite.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Mail className="size-4" />
+                )}
+                Send invite
+              </Button>
+              {/*
+                For a login that exists already — somebody invited directly,
+                who has no employee record. An invite would be refused: the
+                account is active, and inviting an active account is how you
+                take over somebody else's.
+              */}
+              <Button variant="outline" size="sm" onClick={() => setLinkOpen(true)}>
+                <Link2 className="size-4" />
+                Link an account
+              </Button>
+            </>
           ) : null}
           {canDelete ? (
             <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
@@ -381,6 +395,13 @@ export function EmployeeDetail({
       </Tabs>
 
       <EditEmployeeDialog employee={employee as never} open={editOpen} onOpenChange={setEditOpen} />
+
+      <LinkAccountDialog
+        employeeId={id}
+        employeeName={name}
+        open={linkOpen}
+        onOpenChange={setLinkOpen}
+      />
 
       <StatusDialog
         open={statusOpen}

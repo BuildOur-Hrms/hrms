@@ -19,6 +19,7 @@ export const employeeKeys = {
   detail: (id: string) => ["employees", "detail", id] as const,
   managerOptions: (exclude?: string) => ["employees", "manager-options", exclude ?? null] as const,
   orgOptions: ["employees", "org-options"] as const,
+  accountOptions: ["employees", "account-options"] as const,
 };
 
 export interface EmployeeListItem {
@@ -118,6 +119,30 @@ export function useInviteEmployee(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => api.post<{ userId: string; inviteUrl?: string }>(`/employees/${id}/invite`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: employeeKeys.all }),
+  });
+}
+
+/** Accounts with no employee record, for the link picker. */
+export interface LinkableAccount {
+  id: string;
+  email: string;
+  status: string;
+  lastLoginAt: string | null;
+}
+
+export function useAccountOptions(enabled: boolean) {
+  return useQuery({
+    queryKey: employeeKeys.accountOptions,
+    queryFn: () => api.get<LinkableAccount[]>("/employees/account-options"),
+    enabled,
+  });
+}
+
+export function useLinkAccount(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => api.post(`/employees/${id}/link-account`, { userId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: employeeKeys.all }),
   });
 }

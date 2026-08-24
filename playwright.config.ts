@@ -70,9 +70,11 @@ export default defineConfig({
        * something that does not depend on the viewport. `09-profile-setup`
        * asserts a state that exists once per account — the setup prompt is
        * dismissed for good the first time — so a second project always finds
-       * it already gone.
+       * it already gone. `10-link-account` is the same shape: there is one
+       * unlinked pair, and linking it is not undone by the second project
+       * arriving.
        */
-      testIgnore: /0(1-auth|9-profile-setup)\.spec\.ts/,
+      testIgnore: /(01-auth|09-profile-setup|10-link-account)\.spec\.ts/,
     },
   ],
 

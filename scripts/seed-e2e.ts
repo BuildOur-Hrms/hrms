@@ -294,6 +294,45 @@ async function main() {
   const employeeId = await account("employee", E2E_USERS.employee, "Eli", managerEmployeeId);
 
   /*
+   * The two halves of an account that was invited directly: a login with no
+   * employee record, and a record with no login. Reset every run — the
+   * journey links them, and a linked pair gives the next run nothing to do.
+   */
+  await withPlatform(async (db) => {
+    const stray = await db.user.upsert({
+      where: { companyId_email: { companyId, email: `stray@${E2E_SLUG}.test` } },
+      create: { companyId, email: `stray@${E2E_SLUG}.test`, passwordHash, status: "active" },
+      update: { status: "active" },
+      select: { id: true },
+    });
+    // Detach it from whatever a previous run linked it to.
+    await db.employee.updateMany({ where: { userId: stray.id }, data: { userId: null } });
+
+    const existing = await db.employee.findFirst({
+      where: { companyId, employeeCode: "E2E-UNLINKED" },
+      select: { id: true },
+    });
+    const data = {
+      firstName: "Unlinked",
+      lastName: "Person",
+      status: "active" as const,
+      userId: null,
+      departmentId: org.departmentId,
+      designationId: org.designationId,
+      locationId: org.locationId,
+      employmentType: "full_time" as const,
+      joinDate: JOIN_DATE,
+    };
+    if (existing) {
+      await db.employee.update({ where: { id: existing.id }, data });
+    } else {
+      await db.employee.create({
+        data: { companyId, employeeCode: "E2E-UNLINKED", ...data },
+      });
+    }
+  });
+
+  /*
    * Topped back up, so the leave journey tests approval rather than rejection
    * however many times it has run before.
    *
