@@ -35,8 +35,19 @@ const ROLE_LABEL: Record<string, string> = {
   hr: "HR",
   it: "IT",
   manager: "Manager",
-  employee: "Them",
+  employee: "The employee",
 };
+
+/**
+ * A date column arrives as a full timestamp over the wire.
+ *
+ * Trimmed here rather than trusted: rendering it raw put
+ * "due 2027-02-25T00:00:00.000Z" on screen, and comparing it raw makes
+ * "overdue" depend on string lengths lining up.
+ */
+function dayOf(value: string | null): string | null {
+  return value ? value.slice(0, 10) : null;
+}
 
 export function ProgressBar({ progress }: { progress: ChecklistProgress }) {
   return (
@@ -112,8 +123,8 @@ export function ChecklistPanel({
 
       <ul className="divide-border divide-y border-y">
         {tasks.map((task) => {
-          const overdue =
-            task.status === "pending" && task.dueDate !== null && task.dueDate < today;
+          const due = dayOf(task.dueDate);
+          const overdue = task.status === "pending" && due !== null && due < today;
 
           return (
             <li key={task.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
@@ -150,13 +161,17 @@ export function ChecklistPanel({
                 ) : null}
 
                 <p className="text-muted-foreground text-xs">
-                  {ROLE_LABEL[task.assignee] ?? task.assignee}
+                  {/*
+                    The person if there is one, the role if there is not.
+                    Naming both put "The employee · Rowan Departs" on every
+                    task somebody owes about themselves.
+                  */}
                   {task.assignedTo
-                    ? ` · ${[task.assignedTo.firstName, task.assignedTo.lastName]
+                    ? [task.assignedTo.firstName, task.assignedTo.lastName]
                         .filter(Boolean)
-                        .join(" ")}`
-                    : " · nobody assigned"}
-                  {task.dueDate ? ` · due ${task.dueDate}` : ""}
+                        .join(" ")
+                    : `${ROLE_LABEL[task.assignee] ?? task.assignee} · nobody assigned`}
+                  {due ? ` · due ${due}` : ""}
                 </p>
 
                 {task.skipReason ? (

@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Clock,
+  DoorOpen,
   FileClock,
   House,
   ListChecks,
@@ -52,4 +53,5 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   tasks: ListChecks,
   hiring: Briefcase,
   onboarding: ClipboardCheck,
+  offboarding: DoorOpen,
 };

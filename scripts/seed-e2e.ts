@@ -226,10 +226,17 @@ async function main() {
               userId: user.id,
               managerId,
               status: "active",
-              // Back to the state an invited account actually arrives in, so
-              // the post-invite setup journey is repeatable rather than
-              // passing exactly once.
-              profileCompletedAt: null,
+              /*
+               * Back to the state an invited account actually arrives in, so
+               * the post-invite setup journey is repeatable rather than
+               * passing exactly once.
+               *
+               * Except HR. The setup journey needs the employee and the
+               * manager unstamped, and any other spec visiting a profile
+               * would otherwise meet the welcome form instead — which made
+               * one spec depend on another having run first.
+               */
+              profileCompletedAt: role === "hr_admin" ? new Date() : null,
               firstName,
               lastName: "Tester",
               phone: null,
@@ -415,6 +422,84 @@ async function main() {
                 title: "Team lunch",
                 assignee: "manager",
                 dueOffsetDays: 7,
+                isRequired: false,
+                sortOrder: 3,
+              },
+            ],
+          },
+        },
+      });
+    }
+  });
+
+  /*
+   * Somebody on the way out, with an exit checklist to follow.
+   *
+   * Their own record rather than one of the personas: the journey ends with
+   * the person exited and their login disabled, and doing that to a persona
+   * would take every other spec down with it.
+   */
+  await withPlatform(async (db) => {
+    const existing = await db.employee.findFirst({
+      where: { companyId, employeeCode: "E2E-LEAVER" },
+      select: { id: true },
+    });
+    const data = {
+      firstName: "Rowan",
+      lastName: "Departs",
+      status: "active" as const,
+      exitDate: null,
+      departmentId: org.departmentId,
+      designationId: org.designationId,
+      locationId: org.locationId,
+      managerId: managerEmployeeId,
+      employmentType: "full_time" as const,
+      joinDate: JOIN_DATE,
+    };
+    const leaver = existing
+      ? await db.employee.update({ where: { id: existing.id }, data, select: { id: true } })
+      : await db.employee.create({
+          data: { companyId, employeeCode: "E2E-LEAVER", ...data },
+          select: { id: true },
+        });
+
+    // Whatever a previous run left behind. Tasks first: they point at the
+    // request, and the request will not go while they hold it.
+    await db.checklistTask.deleteMany({ where: { employeeId: leaver.id, kind: "offboarding" } });
+    await db.offboardingRequest.deleteMany({ where: { employeeId: leaver.id } });
+
+    const template = await db.checklistTemplate.findFirst({
+      where: { companyId, kind: "offboarding", name: "E2E exit checklist" },
+      select: { id: true },
+    });
+    if (!template) {
+      await db.checklistTemplate.create({
+        data: {
+          companyId,
+          kind: "offboarding",
+          name: "E2E exit checklist",
+          isDefault: true,
+          tasks: {
+            create: [
+              {
+                companyId,
+                title: "Return the laptop",
+                assignee: "employee",
+                dueOffsetDays: -1,
+                sortOrder: 1,
+              },
+              {
+                companyId,
+                title: "Revoke access",
+                assignee: "it",
+                dueOffsetDays: 0,
+                sortOrder: 2,
+              },
+              {
+                companyId,
+                title: "Exit interview",
+                assignee: "hr",
+                dueOffsetDays: -3,
                 isRequired: false,
                 sortOrder: 3,
               },

@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { DetailCardSkeleton } from "@/components/shared/skeletons";
+import { ResignCard } from "@/components/checklists/resign-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { EmployeeStatusBadge, employmentTypeLabel } from "@/components/shared/status-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -282,6 +283,13 @@ export function ProfileView({
           )}
         </CardContent>
       </Card>
+
+      {/*
+        Last on the page, and only for somebody still here. Resigning is a
+        rare and consequential thing to do, so it sits below everything else
+        rather than beside the button that edits a phone number.
+      */}
+      {data.status === "exited" ? null : <ResignCard />}
 
       <EditProfileDialog
         open={editOpen}

@@ -160,3 +160,93 @@ export function useOnboardingPipeline() {
     queryFn: () => api.get<PipelineRow[]>("/onboarding/pipeline"),
   });
 }
+
+// ─────────────────────────────────────────────── leaving
+
+export type ExitStatus =
+  "initiated" | "in_progress" | "cleared" | "settled" | "completed" | "cancelled";
+
+export interface ExitRequest {
+  id: string;
+  employeeId: string;
+  reason: string;
+  requestedLastWorkingDay: string;
+  lastWorkingDay: string | null;
+  status: ExitStatus;
+  approvedAt: string | null;
+  confirmedAt: string | null;
+  clearedAt: string | null;
+  settledAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
+  leaveEncashmentDays: string | number | null;
+  settlementNotes: string | null;
+  createdAt: string;
+  employee: {
+    id: string;
+    firstName: string;
+    lastName: string | null;
+    employeeCode: string;
+    managerId: string | null;
+    designation: { title: string } | null;
+    department: { name: string } | null;
+  };
+}
+
+export const exitKeys = {
+  all: ["offboarding"] as const,
+  list: (status?: string) => ["offboarding", "list", status ?? "all"] as const,
+  forEmployee: (id: string) => ["offboarding", "employee", id] as const,
+};
+
+export function useExits(status?: ExitStatus) {
+  return useQuery({
+    queryKey: exitKeys.list(status),
+    queryFn: () => api.get<ExitRequest[]>("/offboarding", status ? { status } : {}),
+  });
+}
+
+export function useEmployeeExit(employeeId: string) {
+  return useQuery({
+    queryKey: exitKeys.forEmployee(employeeId),
+    queryFn: () =>
+      api.get<{ request: ExitRequest | null } & Checklist>(`/employees/${employeeId}/offboarding`),
+  });
+}
+
+/**
+ * Every step of an exit, through one hook.
+ *
+ * The steps differ only in which endpoint they hit and what they carry, and
+ * spelling out seven near-identical mutations would make the differences
+ * harder to see rather than easier.
+ */
+export function useExitStep() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      step,
+      body,
+    }: {
+      id: string;
+      step: "approve" | "confirm" | "clear" | "settlement" | "complete" | "cancel";
+      body?: Record<string, unknown>;
+    }) => api.post(`/offboarding/${id}/${step}`, body ?? {}),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: exitKeys.all });
+      void queryClient.invalidateQueries({ queryKey: checklistKeys.all });
+      // The person's status changes with the exit, so their record is stale too.
+      void queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+}
+
+export function useResign() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.post("/offboarding", body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: exitKeys.all }),
+  });
+}

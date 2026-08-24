@@ -36,7 +36,8 @@ export type NavIconName =
   | "reports"
   | "tasks"
   | "hiring"
-  | "onboarding";
+  | "onboarding"
+  | "offboarding";
 
 export interface NavItem {
   label: string;
@@ -184,6 +185,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/hr/onboarding",
         icon: "onboarding",
         permissions: ["onboarding.view_all"],
+      },
+      {
+        label: "Offboarding",
+        href: "/hr/offboarding",
+        icon: "offboarding",
+        permissions: ["offboarding.view_all"],
       },
       {
         label: "Task completion",

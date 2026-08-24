@@ -39,6 +39,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { EditEmployeeDialog } from "./edit-employee-dialog";
+import { ExitTab } from "@/components/checklists/exit-tab";
 import { OnboardingTab } from "@/components/checklists/onboarding-tab";
 
 import { LinkAccountDialog } from "./link-account-dialog";
@@ -108,6 +109,8 @@ export function EmployeeDetail({
   canInvite,
   canManageShifts,
   canManageOnboarding,
+  canManageExits,
+  canApproveExits,
   today,
 }: {
   id: string;
@@ -116,6 +119,8 @@ export function EmployeeDetail({
   canInvite: boolean;
   canManageShifts: boolean;
   canManageOnboarding: boolean;
+  canManageExits: boolean;
+  canApproveExits: boolean;
   today: string;
 }) {
   const router = useRouter();
@@ -256,6 +261,9 @@ export function EmployeeDetail({
           */}
           {employee.status === "onboarding" || canManageOnboarding ? (
             <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
+          ) : null}
+          {canManageExits || canApproveExits ? (
+            <TabsTrigger value="leaving">Leaving</TabsTrigger>
           ) : null}
         </TabsList>
 
@@ -413,6 +421,17 @@ export function EmployeeDetail({
               employeeName={name}
               joinDate={employee.joinDate ?? null}
               canManage={canManageOnboarding}
+              today={today}
+            />
+          </TabsContent>
+        ) : null}
+        {canManageExits || canApproveExits ? (
+          <TabsContent value="leaving" className="mt-4">
+            <ExitTab
+              employeeId={id}
+              employeeName={name}
+              canManage={canManageExits}
+              canApprove={canApproveExits}
               today={today}
             />
           </TabsContent>
