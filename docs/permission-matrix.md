@@ -56,6 +56,16 @@
 | `POST /api/v1/designations` | `designation.manage` | ✓ | ✓ | · | · |
 | `DELETE /api/v1/designations/:id` | `designation.manage` | ✓ | ✓ | · | · |
 | `PATCH /api/v1/designations/:id` | `designation.manage` | ✓ | ✓ | · | · |
+| `GET /api/v1/documents` | `documents.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/documents` | `documents.create` | ✓ | ✓ | ✓ | ✓ |
+| `DELETE /api/v1/documents/:id` | `documents.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/documents/:id` | `documents.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `PATCH /api/v1/documents/:id` | `documents.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/documents/:id/confirm` | `documents.create` | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/documents/:id/download` | `documents.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/documents/categories` | `documents.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/documents/categories` | `documents.manage` | ✓ | ✓ | · | · |
+| `PATCH /api/v1/documents/categories/:id` | `documents.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/employees` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/employees` | `employee.create` | ✓ | ✓ | · | · |
 | `DELETE /api/v1/employees/:id` | `employee.delete` | ✓ | ✓ | · | · |
@@ -78,6 +88,8 @@
 | `GET /api/v1/employees/account-options` | `users.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/employees/manager-options` | `employee.view_all` | ✓ | ✓ | · | · |
 | `GET /api/v1/employees/unlinked-options` | `users.manage` | ✓ | ✓ | · | · |
+| `GET /api/v1/files/:...key` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `PUT /api/v1/files/:...key` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/holidays` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/holidays` | `holidays.manage` | ✓ | ✓ | · | · |
 | `DELETE /api/v1/holidays/:id` | `holidays.manage` | ✓ | ✓ | · | · |
@@ -185,4 +197,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**173 endpoints.** Permission-gated endpoints reachable per role — super_admin: 112 · hr_admin: 112 · manager: 26 · employee: 20.
+**185 endpoints.** Permission-gated endpoints reachable per role — super_admin: 122 · hr_admin: 122 · manager: 34 · employee: 28.

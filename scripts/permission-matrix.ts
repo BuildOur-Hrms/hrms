@@ -64,6 +64,11 @@ export const SESSION_ONLY_REASONS: Record<string, string> = {
   "POST /api/v1/me/profile/complete":
     "Finishing your own setup after an invite, through the same allowlist.",
 
+  "GET /api/v1/files/:...key":
+    "The local storage driver standing in for a bucket. Keys begin with the company id and are checked against the caller's before anything is read; a presigned URL would carry its own authority, and this one carries a session instead.",
+  "PUT /api/v1/files/:...key":
+    "The other half of the same stand-in. Same company check, same reason.",
+
   "GET /api/v1/notifications": "Your own notifications.",
   "POST /api/v1/notifications/read": "Marking your own notifications read.",
   "GET /api/v1/announcements": "Announcements addressed to you; drafts filtered in the service.",

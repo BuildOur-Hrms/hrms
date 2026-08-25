@@ -196,6 +196,30 @@ const AUDIT_MAP: {
   }),
   "payroll.run_paid": (p) => ({ entityType: "payroll_run", entityId: p.runId }),
 
+  "document.category_saved": (p) => ({
+    entityType: "document_category",
+    entityId: p.categoryId,
+    after: { code: p.code },
+  }),
+  "document.uploaded": (p) => ({
+    entityType: "document",
+    entityId: p.documentId,
+    after: { employeeId: p.employeeId, categoryId: p.categoryId },
+  }),
+  /*
+   * Reads are audited here and almost nowhere else.
+   *
+   * Who looked at somebody's passport is the question this trail exists to
+   * answer, and unlike a screen view a download leaves the building.
+   */
+  "document.downloaded": (p) => ({
+    entityType: "document",
+    entityId: p.documentId,
+    after: { employeeId: p.employeeId },
+  }),
+  "document.updated": (p) => ({ entityType: "document", entityId: p.documentId }),
+  "document.archived": (p) => ({ entityType: "document", entityId: p.documentId }),
+
   "employee.created": (p) => ({ entityType: "employee", entityId: p.employeeId, after: p.after }),
   "employee.updated": (p) => ({
     entityType: "employee",

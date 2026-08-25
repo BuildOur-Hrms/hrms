@@ -88,6 +88,16 @@ export interface DomainEventMap {
   "payroll.run_created": { runId: string; year: number; month: number };
   "payroll.run_approved": { runId: string; year: number; month: number; payslips: number };
   "payroll.run_paid": { runId: string };
+
+  "document.category_saved": { categoryId: string; code: string };
+  "document.uploaded": {
+    documentId: string;
+    employeeId: string | null;
+    categoryId: string;
+  };
+  "document.downloaded": { documentId: string; employeeId: string | null };
+  "document.updated": { documentId: string };
+  "document.archived": { documentId: string };
   "announcement.changed": {
     announcementId: string;
     action: "drafted" | "published" | "deleted";
