@@ -113,6 +113,19 @@
 | `POST /api/v1/offboarding/:id/settlement` | `offboarding.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/onboarding/pipeline` | `onboarding.view_all` | ✓ | ✓ | · | · |
 | `GET /api/v1/org/options` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/performance/cycles` | `performance.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/performance/cycles` | `performance.manage` | ✓ | ✓ | · | · |
+| `GET /api/v1/performance/cycles/:id/goals` | `performance.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/performance/cycles/:id/goals` | `performance.create` | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/performance/cycles/:id/goals/approve` | `performance.approve` | ✓ | ✓ | ✓ | · |
+| `POST /api/v1/performance/cycles/:id/status` | `performance.manage` | ✓ | ✓ | · | · |
+| `GET /api/v1/performance/cycles/:id/summary` | `performance.view_all` | ✓ | ✓ | · | · |
+| `GET /api/v1/performance/reviews` | `performance.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/performance/reviews/:id` | `performance.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/performance/reviews/:id/final` | `performance.manage` | ✓ | ✓ | · | · |
+| `POST /api/v1/performance/reviews/:id/manager` | `performance.view_team` | ✓ | ✓ | ✓ | · |
+| `POST /api/v1/performance/reviews/:id/reopen` | `performance.manage` | ✓ | ✓ | · | · |
+| `POST /api/v1/performance/reviews/:id/self` | `performance.view_own` | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/permissions` | `roles.view_all` | ✓ | ✓ | · | · |
 | `GET /api/v1/recruitment/applications` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/recruitment/applications` | `recruitment.edit` | ✓ | ✓ | · | · |
@@ -159,4 +172,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**147 endpoints.** Permission-gated endpoints reachable per role — super_admin: 86 · hr_admin: 86 · manager: 15 · employee: 11.
+**160 endpoints.** Permission-gated endpoints reachable per role — super_admin: 99 · hr_admin: 99 · manager: 23 · employee: 17.

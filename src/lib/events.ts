@@ -68,6 +68,20 @@ export interface DomainEventMap {
   "offboarding.settled": { requestId: string; employeeId: string };
   "offboarding.completed": { requestId: string; employeeId: string };
   "offboarding.cancelled": { requestId: string; employeeId: string };
+
+  "performance.cycle_created": { cycleId: string; name: string };
+  "performance.cycle_status_changed": {
+    cycleId: string;
+    from: string;
+    to: string;
+    opened: number;
+  };
+  "performance.goal_added": { goalId: string; cycleId: string; employeeId: string };
+  "performance.goals_approved": { cycleId: string; employeeId: string; count: number };
+  "performance.self_submitted": { reviewId: string; employeeId: string };
+  "performance.manager_submitted": { reviewId: string; employeeId: string };
+  "performance.final_rating_set": { reviewId: string; employeeId: string; rating: number | null };
+  "performance.review_reopened": { reviewId: string; employeeId: string; to: string };
   "announcement.changed": {
     announcementId: string;
     action: "drafted" | "published" | "deleted";

@@ -129,6 +129,48 @@ const AUDIT_MAP: {
     after: { employeeId: p.employeeId },
   }),
 
+  "performance.cycle_created": (p) => ({
+    entityType: "performance_cycle",
+    entityId: p.cycleId,
+    after: { name: p.name },
+  }),
+  "performance.cycle_status_changed": (p) => ({
+    entityType: "performance_cycle",
+    entityId: p.cycleId,
+    before: { status: p.from },
+    after: { status: p.to, reviewsOpened: p.opened },
+  }),
+  "performance.goal_added": (p) => ({
+    entityType: "job_task",
+    entityId: p.goalId,
+    after: { cycleId: p.cycleId, employeeId: p.employeeId },
+  }),
+  "performance.goals_approved": (p) => ({
+    entityType: "employee",
+    entityId: p.employeeId,
+    after: { cycleId: p.cycleId, goalsApproved: p.count },
+  }),
+  "performance.self_submitted": (p) => ({
+    entityType: "performance_review",
+    entityId: p.reviewId,
+    after: { employeeId: p.employeeId, half: "self" },
+  }),
+  "performance.manager_submitted": (p) => ({
+    entityType: "performance_review",
+    entityId: p.reviewId,
+    after: { employeeId: p.employeeId, half: "manager" },
+  }),
+  "performance.final_rating_set": (p) => ({
+    entityType: "performance_review",
+    entityId: p.reviewId,
+    after: { employeeId: p.employeeId, finalRating: p.rating },
+  }),
+  "performance.review_reopened": (p) => ({
+    entityType: "performance_review",
+    entityId: p.reviewId,
+    after: { employeeId: p.employeeId, sentBackTo: p.to },
+  }),
+
   "employee.created": (p) => ({ entityType: "employee", entityId: p.employeeId, after: p.after }),
   "employee.updated": (p) => ({
     entityType: "employee",
