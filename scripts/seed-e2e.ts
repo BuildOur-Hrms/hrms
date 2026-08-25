@@ -516,6 +516,39 @@ async function main() {
   });
 
   /*
+   * A review cycle, open for goals.
+   *
+   * Reset each run: the journey sets a goal, opens reviews and rates
+   * somebody, and a cycle already at "closed" gives the next run nothing to
+   * do. The goals go with it — they are job tasks with a cycle on them.
+   */
+  await withPlatform(async (db) => {
+    const existing = await db.performanceCycle.findFirst({
+      where: { companyId, name: "E2E cycle" },
+      select: { id: true },
+    });
+    if (existing) {
+      await db.jobTask.deleteMany({ where: { cycleId: existing.id } });
+      await db.performanceReview.deleteMany({ where: { cycleId: existing.id } });
+      await db.performanceCycle.update({
+        where: { id: existing.id },
+        data: { status: "active" },
+      });
+    } else {
+      await db.performanceCycle.create({
+        data: {
+          companyId,
+          name: "E2E cycle",
+          periodStart: new Date("2027-01-01"),
+          periodEnd: new Date("2027-06-30"),
+          reviewDeadline: new Date("2027-07-15"),
+          status: "active",
+        },
+      });
+    }
+  });
+
+  /*
    * Topped back up, so the leave journey tests approval rather than rejection
    * however many times it has run before.
    *

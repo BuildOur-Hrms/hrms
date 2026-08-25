@@ -37,7 +37,8 @@ export type NavIconName =
   | "tasks"
   | "hiring"
   | "onboarding"
-  | "offboarding";
+  | "offboarding"
+  | "performance";
 
 export interface NavItem {
   label: string;
@@ -81,6 +82,12 @@ export const NAV_SECTIONS: NavSection[] = [
         permissions: [],
       },
       {
+        label: "My performance",
+        href: "/me/performance",
+        icon: "performance",
+        permissions: [],
+      },
+      {
         label: "My tasks",
         href: "/me/tasks",
         icon: "tasks",
@@ -114,6 +121,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/team/leave-approvals",
         icon: "leave",
         permissions: ["leave.approve"],
+      },
+      {
+        label: "Team performance",
+        href: "/team/performance",
+        icon: "performance",
+        permissions: ["performance.view_team"],
       },
       {
         label: "Team tasks",
@@ -191,6 +204,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/hr/offboarding",
         icon: "offboarding",
         permissions: ["offboarding.view_all"],
+      },
+      {
+        label: "Performance",
+        href: "/hr/performance",
+        icon: "performance",
+        permissions: ["performance.view_all"],
       },
       {
         label: "Task completion",

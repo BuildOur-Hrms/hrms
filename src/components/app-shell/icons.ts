@@ -15,6 +15,7 @@ import {
   MapPin,
   Settings,
   ShieldCheck,
+  Target,
   UserCircle,
   UserCog,
   Users,
@@ -54,4 +55,5 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   hiring: Briefcase,
   onboarding: ClipboardCheck,
   offboarding: DoorOpen,
+  performance: Target,
 };
