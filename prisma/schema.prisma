@@ -268,6 +268,8 @@ model Company {
   checklistTemplateTasks ChecklistTemplateTask[]
   checklistTasks         ChecklistTask[]
   offboardingRequests    OffboardingRequest[]
+  performanceCycles      PerformanceCycle[]
+  performanceReviews     PerformanceReview[]
 
   @@map("companies")
 }
@@ -537,6 +539,8 @@ model Employee {
   checklistTasks      ChecklistTask[]        @relation("ChecklistSubject")
   checklistTasksOwned ChecklistTask[]        @relation("ChecklistAssignee")
   offboardingRequests OffboardingRequest[]
+  performanceReviews  PerformanceReview[]    @relation("ReviewSubject")
+  reviewsToWrite      PerformanceReview[]    @relation("ReviewManager")
 
   @@unique([companyId, employeeCode])
   @@index([companyId, status])
@@ -980,13 +984,23 @@ model JobTask {
   month       Int
   dueDate     DateTime?  @map("due_date") @db.Date
   completedAt DateTime?  @map("completed_at") @db.Timestamptz(6)
+  /// Set when this task is a goal in a review cycle rather than ordinary
+  /// month-to-month work. Tasks with a cycle are left out of the monthly
+  /// completion figure — a half-year goal at 20% in March is not somebody
+  /// having a bad March.
+  cycleId     String?    @map("cycle_id") @db.Uuid
+  /// A goal set is proposed by the person and agreed by their manager.
+  approvedBy  String?    @map("approved_by") @db.Uuid
+  approvedAt  DateTime?  @map("approved_at") @db.Timestamptz(6)
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company  Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  author   User?    @relation("JobTaskAuthor", fields: [createdBy], references: [id], onDelete: SetNull)
+  company  Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  author   User?             @relation("JobTaskAuthor", fields: [createdBy], references: [id], onDelete: SetNull)
+  cycle    PerformanceCycle? @relation(fields: [cycleId], references: [id], onDelete: SetNull)
 
+  @@index([cycleId])
   @@index([companyId, year, month])
   @@index([employeeId, year, month])
   @@index([companyId, employeeId, status])
@@ -1304,4 +1318,77 @@ model ChecklistTask {
   @@index([companyId, assignedToEmployeeId, status])
   @@index([companyId, status, dueDate])
   @@map("checklist_tasks")
+}
+
+// ─────────────────────────────────────────────── performance
+
+enum PerformanceCycleStatus {
+  draft
+  active
+  review
+  closed
+
+  @@map("performance_cycle_status")
+}
+
+enum PerformanceReviewStatus {
+  pending_self
+  pending_manager
+  completed
+
+  @@map("performance_review_status")
+}
+
+/// A review period — "H1 2027" — with the goals and reviews that hang off it.
+model PerformanceCycle {
+  id             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String                 @map("company_id") @db.Uuid
+  name           String                 @db.VarChar(120)
+  periodStart    DateTime               @map("period_start") @db.Date
+  periodEnd      DateTime               @map("period_end") @db.Date
+  reviewDeadline DateTime?              @map("review_deadline") @db.Date
+  status         PerformanceCycleStatus @default(draft)
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company             @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  reviews PerformanceReview[]
+  goals   JobTask[]
+
+  @@index([companyId, status])
+  @@map("performance_cycles")
+}
+
+/// One person's review for one cycle: what they said, what their manager
+/// said, and what the company settled on.
+model PerformanceReview {
+  id                 String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId          String                  @map("company_id") @db.Uuid
+  cycleId            String                  @map("cycle_id") @db.Uuid
+  employeeId         String                  @map("employee_id") @db.Uuid
+  /// Whoever the manager was when the review opened, kept even if the
+  /// reporting line moves later.
+  managerId          String?                 @map("manager_id") @db.Uuid
+  status             PerformanceReviewStatus @default(pending_self)
+  selfRating         Int?                    @map("self_rating") @db.SmallInt
+  selfComments       String?                 @map("self_comments")
+  selfSubmittedAt    DateTime?               @map("self_submitted_at") @db.Timestamptz(6)
+  managerRating      Int?                    @map("manager_rating") @db.SmallInt
+  managerComments    String?                 @map("manager_comments")
+  managerSubmittedAt DateTime?               @map("manager_submitted_at") @db.Timestamptz(6)
+  /// Free to differ from the manager's: calibrating across a department is
+  /// the reason this is not simply a copy.
+  finalRating        Int?                    @map("final_rating") @db.SmallInt
+  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  cycle    PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  employee Employee         @relation("ReviewSubject", fields: [employeeId], references: [id], onDelete: Cascade)
+  manager  Employee?        @relation("ReviewManager", fields: [managerId], references: [id], onDelete: SetNull)
+
+  @@unique([cycleId, employeeId])
+  @@index([companyId, status])
+  @@index([managerId, status])
+  @@map("performance_reviews")
 }

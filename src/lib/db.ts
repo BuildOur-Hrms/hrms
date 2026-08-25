@@ -116,6 +116,8 @@ export const TENANT_MODELS = new Set([
   "ChecklistTemplateTask",
   "ChecklistTask",
   "OffboardingRequest",
+  "PerformanceCycle",
+  "PerformanceReview",
 ]);
 
 /** Reads may also see platform-global rows (`company_id IS NULL`); writes may not. */

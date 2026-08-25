@@ -134,12 +134,22 @@ async function assertCanAssign(ctx: RequestContext, employeeId: string): Promise
 
 // ─────────────────────────────────────────────── reading
 
+/**
+ * Ordinary month-to-month work, as opposed to a goal in a review cycle.
+ *
+ * Every figure on these screens is monthly, and a goal runs for half a year.
+ * Letting one in would put a six-month goal sitting at 20% into somebody's
+ * March and call it a bad March. Goals are measured against their cycle, on
+ * the performance screens, where the denominator is the right one.
+ */
+const NOT_A_GOAL = { cycleId: null } as const;
+
 export async function listTasks(ctx: RequestContext, input: ListTasksInput) {
   const employeeId = input.employeeId ?? ownEmployeeId(ctx);
   await assertCanView(ctx, employeeId);
 
   const rows = await ctx.db.jobTask.findMany({
-    where: { employeeId, year: input.year, month: input.month },
+    where: { employeeId, year: input.year, month: input.month, ...NOT_A_GOAL },
     orderBy: [{ origin: "asc" }, { weight: "desc" }, { createdAt: "asc" }],
     select: TASK_FIELDS,
   });
@@ -221,6 +231,7 @@ export async function taskBoard(ctx: RequestContext, input: BoardInput) {
     ? await ctx.db.jobTask.findMany({
         where: {
           employeeId: { in: ids },
+          ...NOT_A_GOAL,
           // The whole window in one query. Twelve separate reads would be
           // twelve chances for the chart to render half-built.
           OR: window.map((m) => ({ year: m.year, month: m.month })),
@@ -299,6 +310,7 @@ export async function taskTrend(ctx: RequestContext, employeeId: string, input: 
   const tasks = await ctx.db.jobTask.findMany({
     where: {
       employeeId,
+      ...NOT_A_GOAL,
       OR: window.map((m) => ({ year: m.year, month: m.month })),
     },
     select: { origin: true, status: true, weight: true, progress: true, year: true, month: true },
