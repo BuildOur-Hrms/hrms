@@ -171,6 +171,31 @@ const AUDIT_MAP: {
     after: { employeeId: p.employeeId, sentBackTo: p.to },
   }),
 
+  "payroll.component_saved": (p) => ({
+    entityType: "salary_component",
+    entityId: p.componentId,
+    after: { code: p.code },
+  }),
+  "payroll.salary_assigned": (p) => ({
+    entityType: "employee",
+    entityId: p.employeeId,
+    // The amounts are deliberately not in the audit trail. Who changed
+    // somebody's pay and when is the useful record; copying the figures into
+    // a second table spreads salary further than it needs to go.
+    after: { salaryId: p.salaryId, effectiveFrom: p.effectiveFrom },
+  }),
+  "payroll.run_created": (p) => ({
+    entityType: "payroll_run",
+    entityId: p.runId,
+    after: { year: p.year, month: p.month },
+  }),
+  "payroll.run_approved": (p) => ({
+    entityType: "payroll_run",
+    entityId: p.runId,
+    after: { year: p.year, month: p.month, payslips: p.payslips },
+  }),
+  "payroll.run_paid": (p) => ({ entityType: "payroll_run", entityId: p.runId }),
+
   "employee.created": (p) => ({ entityType: "employee", entityId: p.employeeId, after: p.after }),
   "employee.updated": (p) => ({
     entityType: "employee",

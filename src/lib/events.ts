@@ -82,6 +82,12 @@ export interface DomainEventMap {
   "performance.manager_submitted": { reviewId: string; employeeId: string };
   "performance.final_rating_set": { reviewId: string; employeeId: string; rating: number | null };
   "performance.review_reopened": { reviewId: string; employeeId: string; to: string };
+
+  "payroll.component_saved": { componentId: string; code: string };
+  "payroll.salary_assigned": { salaryId: string; employeeId: string; effectiveFrom: string };
+  "payroll.run_created": { runId: string; year: number; month: number };
+  "payroll.run_approved": { runId: string; year: number; month: number; payslips: number };
+  "payroll.run_paid": { runId: string };
   "announcement.changed": {
     announcementId: string;
     action: "drafted" | "published" | "deleted";

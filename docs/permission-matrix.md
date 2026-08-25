@@ -70,6 +70,8 @@
 | `GET /api/v1/employees/:id/offboarding` | `offboarding.view_own` | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/employees/:id/onboarding` | `onboarding.view_team` | ✓ | ✓ | ✓ | · |
 | `POST /api/v1/employees/:id/onboarding` | `onboarding.create` | ✓ | ✓ | · | · |
+| `GET /api/v1/employees/:id/salary` | `payroll.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `POST /api/v1/employees/:id/salary` | `payroll.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/employees/:id/shifts` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/employees/:id/shifts` | `shifts.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/employees/:id/status` | `employee.edit` | ✓ | ✓ | · | · |
@@ -113,6 +115,17 @@
 | `POST /api/v1/offboarding/:id/settlement` | `offboarding.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/onboarding/pipeline` | `onboarding.view_all` | ✓ | ✓ | · | · |
 | `GET /api/v1/org/options` | _session_ | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/payroll/components` | `payroll.view_all` | ✓ | ✓ | · | · |
+| `POST /api/v1/payroll/components` | `payroll.manage` | ✓ | ✓ | · | · |
+| `DELETE /api/v1/payroll/components/:id` | `payroll.manage` | ✓ | ✓ | · | · |
+| `GET /api/v1/payroll/payslips` | `payroll.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/payroll/payslips/:id` | `payroll.view_own` | ✓ | ✓ | ✓ | ✓ |
+| `GET /api/v1/payroll/preview` | `payroll.view_all` | ✓ | ✓ | · | · |
+| `GET /api/v1/payroll/runs` | `payroll.view_all` | ✓ | ✓ | · | · |
+| `POST /api/v1/payroll/runs` | `payroll.manage` | ✓ | ✓ | · | · |
+| `POST /api/v1/payroll/runs/:id/approve` | `payroll.approve` | ✓ | ✓ | · | · |
+| `GET /api/v1/payroll/runs/:id/export` | `payroll.export` | ✓ | ✓ | · | · |
+| `POST /api/v1/payroll/runs/:id/status` | `payroll.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/performance/cycles` | `performance.view_own` | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/performance/cycles` | `performance.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/performance/cycles/:id/goals` | `performance.view_own` | ✓ | ✓ | ✓ | ✓ |
@@ -172,4 +185,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**160 endpoints.** Permission-gated endpoints reachable per role — super_admin: 99 · hr_admin: 99 · manager: 23 · employee: 17.
+**173 endpoints.** Permission-gated endpoints reachable per role — super_admin: 112 · hr_admin: 112 · manager: 26 · employee: 20.
