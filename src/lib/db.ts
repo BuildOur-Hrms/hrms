@@ -118,6 +118,12 @@ export const TENANT_MODELS = new Set([
   "OffboardingRequest",
   "PerformanceCycle",
   "PerformanceReview",
+  "SalaryComponent",
+  "EmployeeSalary",
+  "EmployeeSalaryItem",
+  "PayrollRun",
+  "Payslip",
+  "PayslipItem",
 ]);
 
 /** Reads may also see platform-global rows (`company_id IS NULL`); writes may not. */

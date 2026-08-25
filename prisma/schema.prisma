@@ -270,6 +270,12 @@ model Company {
   offboardingRequests    OffboardingRequest[]
   performanceCycles      PerformanceCycle[]
   performanceReviews     PerformanceReview[]
+  salaryComponents       SalaryComponent[]
+  employeeSalaries       EmployeeSalary[]
+  employeeSalaryItems    EmployeeSalaryItem[]
+  payrollRuns            PayrollRun[]
+  payslips               Payslip[]
+  payslipItems           PayslipItem[]
 
   @@map("companies")
 }
@@ -541,6 +547,8 @@ model Employee {
   offboardingRequests OffboardingRequest[]
   performanceReviews  PerformanceReview[]    @relation("ReviewSubject")
   reviewsToWrite      PerformanceReview[]    @relation("ReviewManager")
+  employeeSalaries    EmployeeSalary[]
+  payslips            Payslip[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId, status])
@@ -1391,4 +1399,161 @@ model PerformanceReview {
   @@index([companyId, status])
   @@index([managerId, status])
   @@map("performance_reviews")
+}
+
+// ─────────────────────────────────────────────── payroll
+
+enum SalaryComponentKind {
+  earning
+  deduction
+
+  @@map("salary_component_kind")
+}
+
+enum SalaryCalcType {
+  fixed
+  percentage
+
+  @@map("salary_calc_type")
+}
+
+enum PayrollRunStatus {
+  draft
+  approved
+  paid
+
+  @@map("payroll_run_status")
+}
+
+/// A line that can appear on a payslip — basic, an allowance, a deduction.
+model SalaryComponent {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String              @map("company_id") @db.Uuid
+  code            String              @db.VarChar(20)
+  name            String              @db.VarChar(80)
+  kind            SalaryComponentKind
+  calcType        SalaryCalcType      @default(fixed) @map("calc_type")
+  /// For a percentage component, what it is a percentage of.
+  baseComponentId String?             @map("base_component_id") @db.Uuid
+  /// Whether loss of pay shrinks it. A fixed reimbursement usually should not.
+  prorates        Boolean             @default(true)
+  sortOrder       Int                 @default(0) @map("sort_order")
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?           @map("deleted_at") @db.Timestamptz(6)
+
+  company       Company              @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  baseComponent SalaryComponent?     @relation("ComponentBase", fields: [baseComponentId], references: [id], onDelete: SetNull)
+  derivedFrom   SalaryComponent[]    @relation("ComponentBase")
+  salaryItems   EmployeeSalaryItem[]
+  payslipItems  PayslipItem[]
+
+  @@map("salary_components")
+}
+
+/// What somebody is paid, from a date until it changes.
+model EmployeeSalary {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String    @map("company_id") @db.Uuid
+  employeeId    String    @map("employee_id") @db.Uuid
+  effectiveFrom DateTime  @map("effective_from") @db.Date
+  /// Closed when the next revision starts; null means still in force.
+  effectiveTo   DateTime? @map("effective_to") @db.Date
+  note          String?
+  createdBy     String?   @map("created_by") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company              @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  items    EmployeeSalaryItem[]
+
+  @@index([employeeId, effectiveFrom(sort: Desc)])
+  @@map("employee_salaries")
+}
+
+model EmployeeSalaryItem {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  salaryId    String   @map("salary_id") @db.Uuid
+  componentId String   @map("component_id") @db.Uuid
+  /// One or the other, decided by the component's calc type.
+  amountMinor BigInt?  @map("amount_minor")
+  percent     Decimal? @db.Decimal(6, 3)
+
+  company   Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  salary    EmployeeSalary  @relation(fields: [salaryId], references: [id], onDelete: Cascade)
+  component SalaryComponent @relation(fields: [componentId], references: [id], onDelete: Restrict)
+
+  @@unique([salaryId, componentId])
+  @@map("employee_salary_items")
+}
+
+/// One month's payroll for the whole company.
+model PayrollRun {
+  id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String           @map("company_id") @db.Uuid
+  year       Int
+  month      Int
+  status     PayrollRunStatus @default(draft)
+  note       String?
+  approvedBy String?          @map("approved_by") @db.Uuid
+  approvedAt DateTime?        @map("approved_at") @db.Timestamptz(6)
+  paidAt     DateTime?        @map("paid_at") @db.Timestamptz(6)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  payslips Payslip[]
+
+  @@unique([companyId, year, month])
+  @@map("payroll_runs")
+}
+
+/// One person's pay for one month.
+model Payslip {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String   @map("company_id") @db.Uuid
+  runId           String   @map("run_id") @db.Uuid
+  employeeId      String   @map("employee_id") @db.Uuid
+  periodDays      Decimal  @map("period_days") @db.Decimal(5, 2)
+  lopDays         Decimal  @default(0) @map("lop_days") @db.Decimal(5, 2)
+  payableDays     Decimal  @map("payable_days") @db.Decimal(5, 2)
+  grossMinor      BigInt   @default(0) @map("gross_minor")
+  deductionsMinor BigInt   @default(0) @map("deductions_minor")
+  /// Free to be negative: a recovery larger than the month's pay is real, and
+  /// showing zero would hide money still owed.
+  netMinor        BigInt   @default(0) @map("net_minor")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  run      PayrollRun    @relation(fields: [runId], references: [id], onDelete: Cascade)
+  employee Employee      @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  items    PayslipItem[]
+
+  @@unique([runId, employeeId])
+  @@index([employeeId])
+  @@map("payslips")
+}
+
+model PayslipItem {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String              @map("company_id") @db.Uuid
+  payslipId   String              @map("payslip_id") @db.Uuid
+  /// The component as it was, not as it is: renaming one next year must not
+  /// rewrite what last year's payslip says it paid.
+  componentId String?             @map("component_id") @db.Uuid
+  code        String              @db.VarChar(20)
+  name        String              @db.VarChar(80)
+  kind        SalaryComponentKind
+  amountMinor BigInt              @map("amount_minor")
+  sortOrder   Int                 @default(0) @map("sort_order")
+
+  company   Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  payslip   Payslip          @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  component SalaryComponent? @relation(fields: [componentId], references: [id], onDelete: SetNull)
+
+  @@index([payslipId, sortOrder])
+  @@map("payslip_items")
 }
