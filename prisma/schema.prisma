@@ -276,6 +276,8 @@ model Company {
   payrollRuns            PayrollRun[]
   payslips               Payslip[]
   payslipItems           PayslipItem[]
+  documentCategories     DocumentCategory[]
+  documents              Document[]
 
   @@map("companies")
 }
@@ -549,6 +551,7 @@ model Employee {
   reviewsToWrite      PerformanceReview[]    @relation("ReviewManager")
   employeeSalaries    EmployeeSalary[]
   payslips            Payslip[]
+  documents           Document[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId, status])
@@ -1556,4 +1559,75 @@ model PayslipItem {
 
   @@index([payslipId, sortOrder])
   @@map("payslip_items")
+}
+
+// ─────────────────────────────────────────────── documents
+
+enum DocumentStatus {
+  /// A row waiting for its bytes: the upload was signed but not confirmed.
+  pending
+  active
+  expired
+  archived
+
+  @@map("document_status")
+}
+
+/// A kind of document, and the rules that follow from what kind it is.
+model DocumentCategory {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId          String    @map("company_id") @db.Uuid
+  code               String    @db.VarChar(30)
+  name               String    @db.VarChar(80)
+  /// Whether a person may put one of these in themselves.
+  employeeUploadable Boolean   @default(false) @map("employee_uploadable")
+  /// Whether a manager may see their reports' documents of this kind. Off by
+  /// default: the safe answer for a category nobody has thought about is no.
+  managerVisible     Boolean   @default(false) @map("manager_visible")
+  expiryRequired     Boolean   @default(false) @map("expiry_required")
+  sortOrder          Int       @default(0) @map("sort_order")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  documents Document[]
+
+  @@map("document_categories")
+}
+
+/// One stored file, and enough about it to answer questions without fetching it.
+model Document {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String         @map("company_id") @db.Uuid
+  /// Null for a company document — a policy, the handbook — which everybody reads.
+  employeeId  String?        @map("employee_id") @db.Uuid
+  categoryId  String         @map("category_id") @db.Uuid
+  name        String         @db.VarChar(160)
+  fileKey     String         @map("file_key") @db.VarChar(255)
+  contentType String         @map("content_type") @db.VarChar(100)
+  sizeBytes   Int            @default(0) @map("size_bytes")
+  expiryDate  DateTime?      @map("expiry_date") @db.Date
+  status      DocumentStatus @default(pending)
+  uploadedBy  String?        @map("uploaded_by") @db.Uuid
+  /// Informational only. That HR has eyeballed a certificate is worth
+  /// recording; it gates nothing.
+  verifiedBy  String?        @map("verified_by") @db.Uuid
+  verifiedAt  DateTime?      @map("verified_at") @db.Timestamptz(6)
+  /// Versioning by replacement: this row supersedes that one, and that one is
+  /// archived rather than deleted.
+  replacesId  String?        @map("replaces_id") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company    Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee   Employee?        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  category   DocumentCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  replaces   Document?        @relation("DocumentVersions", fields: [replacesId], references: [id], onDelete: SetNull)
+  replacedBy Document[]       @relation("DocumentVersions")
+
+  @@unique([fileKey])
+  @@index([employeeId, status])
+  @@index([companyId, status])
+  @@map("documents")
 }

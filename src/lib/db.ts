@@ -124,6 +124,8 @@ export const TENANT_MODELS = new Set([
   "PayrollRun",
   "Payslip",
   "PayslipItem",
+  "DocumentCategory",
+  "Document",
 ]);
 
 /** Reads may also see platform-global rows (`company_id IS NULL`); writes may not. */

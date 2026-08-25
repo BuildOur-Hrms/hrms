@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
  * size cap is signed into the upload rather than checked afterwards.
  */
 
-export type UploadCategory = "employee-photo" | "company-logo" | "leave-attachment";
+export type UploadCategory = "employee-photo" | "company-logo" | "leave-attachment" | "document";
 
 export interface CategoryPolicy {
   /** Path segment in the object key. */
@@ -43,6 +43,19 @@ export const UPLOAD_POLICY: Record<UploadCategory, CategoryPolicy> = {
     module: "leave",
     mimeTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
     maxBytes: 10 * MB,
+    stripMetadata: false,
+  },
+  /**
+   * Contracts, certificates, identity papers, policies.
+   *
+   * The widest of these lists and still narrow: a document store that accepts
+   * anything becomes the easiest way to get a file onto the company's storage
+   * and hand somebody a link to it.
+   */
+  document: {
+    module: "documents",
+    mimeTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+    maxBytes: 20 * MB,
     stripMetadata: false,
   },
 };
