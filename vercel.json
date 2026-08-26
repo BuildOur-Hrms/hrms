@@ -13,6 +13,10 @@
     {
       "path": "/api/v1/cron/daily-notices",
       "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/v1/cron/document-expiry",
+      "schedule": "30 1 * * *"
     }
   ]
 }
