@@ -162,7 +162,14 @@ export function UsersView({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {/* A placeholder is not a label: it disappears the moment somebody
+            types, and a screen reader gets nothing from it at all. */}
+        <Label htmlFor="user-search" className="sr-only">
+          Search users by email
+        </Label>
         <Input
+          id="user-search"
+          type="search"
           className="max-w-sm"
           placeholder="Search by email"
           value={q}

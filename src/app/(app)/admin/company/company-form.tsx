@@ -126,9 +126,9 @@ export function CompanyForm({ canManage }: { canManage: boolean }) {
               ) : null}
             </div>
             <div className="grid gap-2">
-              <Label>Slug</Label>
+              <Label htmlFor="company-slug">Slug</Label>
               {/* Immutable: it identifies the tenant and appears in storage keys. */}
-              <Input value={data.slug} disabled readOnly />
+              <Input id="company-slug" value={data.slug} disabled readOnly />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="timezone">Timezone</Label>

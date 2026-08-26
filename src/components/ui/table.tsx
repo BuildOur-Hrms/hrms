@@ -6,7 +6,20 @@ import { cn } from "@/lib/utils";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
+    /*
+     * The shadow on the cut edge is the only thing telling somebody the table
+     * scrolls. On a phone the scrollbar is invisible until you already know
+     * to swipe, so a table wider than the screen simply looks truncated —
+     * which is what it looked like here.
+     *
+     * Two gradients pinned with `local` mask the shadows when there is
+     * nothing more to see in that direction, so the hint appears exactly when
+     * it is true and costs no JavaScript to work out.
+     */
+    <div
+      data-slot="table-container"
+      className="relative w-full overflow-x-auto [background:linear-gradient(to_right,var(--card)_30%,transparent)_left/1.5rem_100%_no-repeat_local,linear-gradient(to_left,var(--card)_30%,transparent)_right/1.5rem_100%_no-repeat_local,radial-gradient(farthest-side_at_0_50%,rgb(0_0_0/0.14),transparent)_left/0.75rem_100%_no-repeat_scroll,radial-gradient(farthest-side_at_100%_50%,rgb(0_0_0/0.14),transparent)_right/0.75rem_100%_no-repeat_scroll]"
+    >
       <table
         data-slot="table"
         className={cn("w-full caption-bottom text-sm", className)}
