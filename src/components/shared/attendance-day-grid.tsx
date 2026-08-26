@@ -107,7 +107,7 @@ export function AttendanceDayGrid({
 
   return (
     <Card>
-      <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
         <CardTitle>
           {scope === "team" ? "My team" : "Everyone"}
           {missing > 0 ? (

@@ -72,7 +72,7 @@ export function NotificationsView() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>
               Notifications

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import { ApiError } from "@/lib/api-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,7 +112,7 @@ export function MyLeaveView() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>Balances for {year}</CardTitle>
             <CardDescription>
@@ -127,11 +128,28 @@ export function MyLeaveView() {
           {balances.isLoading ? (
             <Skeleton className="h-24 w-full" />
           ) : balances.isError ? (
-            // Not the same thing as having no balances, and saying so saves
-            // somebody a conversation with HR about a working configuration.
+            /*
+             * The server's own words, when it has any.
+             *
+             * The commonest thing to go wrong here is not a fault at all: an
+             * administrator account with no employee record attached has no
+             * balances and never will, and the endpoint says exactly that.
+             * "Try again in a moment" is the wrong advice for a condition
+             * that will not change on its own, so a refusal the server can
+             * explain gets to explain itself, and only a genuine failure
+             * gets the retry.
+             */
             <EmptyState
-              title="Could not load your balances"
-              description="Something went wrong fetching them. Try again in a moment."
+              title={
+                balances.error instanceof ApiError && balances.error.status < 500
+                  ? "Nothing to show here"
+                  : "Could not load your balances"
+              }
+              description={
+                balances.error instanceof ApiError && balances.error.status < 500
+                  ? balances.error.message
+                  : "Something went wrong fetching them. Try again in a moment."
+              }
             />
           ) : (balances.data ?? []).length === 0 ? (
             /*

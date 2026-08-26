@@ -67,7 +67,7 @@ export function TypesPanel({ canManage }: { canManage: boolean }) {
 
   return (
     <Card>
-      <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
         <div>
           <CardTitle>Leave types</CardTitle>
           <CardDescription>

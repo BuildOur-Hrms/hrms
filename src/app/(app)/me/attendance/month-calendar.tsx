@@ -100,7 +100,7 @@ export function MonthCalendar({ onPickDay }: { onPickDay?: (date: string) => voi
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{label}</CardTitle>
         <div className="flex gap-1">
           <Button

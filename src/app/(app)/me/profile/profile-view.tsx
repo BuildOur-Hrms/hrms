@@ -176,7 +176,7 @@ export function ProfileView({
       </div>
 
       <Card>
-        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
           <div>
             <CardTitle>About you</CardTitle>
             <CardDescription>
@@ -217,7 +217,7 @@ export function ProfileView({
       </Card>
 
       <Card>
-        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
           <div>
             <CardTitle>Emergency contacts</CardTitle>
             <CardDescription>Who we should call if something happens at work.</CardDescription>

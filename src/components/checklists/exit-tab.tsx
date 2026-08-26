@@ -105,7 +105,7 @@ export function ExitTab({
   if (!request || request.status === "cancelled") {
     return (
       <Card>
-        <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle>Leaving</CardTitle>
             <CardDescription>Nothing in progress.</CardDescription>
@@ -154,7 +154,7 @@ export function ExitTab({
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2">
               Leaving

@@ -64,7 +64,7 @@ export function AdjustBalancePanel() {
 
   return (
     <Card>
-      <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
         <div>
           <CardTitle>Balance adjustments</CardTitle>
           <CardDescription>

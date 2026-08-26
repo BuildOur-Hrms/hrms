@@ -59,7 +59,7 @@ export function OnboardingTab({
 
   return (
     <Card>
-      <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <CardTitle>Onboarding</CardTitle>
           <CardDescription>
