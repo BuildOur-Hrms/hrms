@@ -75,10 +75,11 @@ function present<T extends TypeRow>(row: T) {
 
 export async function listLeaveTypes(ctx: RequestContext) {
   const rows = await ctx.db.leaveType.findMany({
-    // Archived types are gone from every list, including the apply form.
-    // Deleting one sets `deleted_at` and nothing was reading it, so a type
-    // somebody had retired stayed on offer to every employee.
-    where: { deletedAt: null },
+    // No `deletedAt` filter here on purpose: `LeaveType` is in
+    // `SOFT_DELETE_MODELS`, so the tenant client already adds one to every
+    // read. Repeating it reads like the filter is this query's job, and the
+    // next model that is *not* in that set gets forgotten because the hand
+    // written version looks like the house style.
     orderBy: { name: "asc" },
     select: {
       ...TYPE_FIELDS,

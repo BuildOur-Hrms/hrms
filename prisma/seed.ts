@@ -226,10 +226,27 @@ async function main() {
      * that is a policy decision belonging to the company rather than to a
      * seed, and HR can add types under HR → Leave.
      */
-    const leaveTypes: { code: string; name: string; isPaid: boolean; accrual: number }[] = [
-      { code: "CL", name: "Casual leave", isPaid: true, accrual: 1 },
-      { code: "SL", name: "Sick leave", isPaid: true, accrual: 0.5 },
-      { code: "LWP", name: "Leave without pay", isPaid: false, accrual: 0 },
+    const leaveTypes: {
+      code: string;
+      name: string;
+      isPaid: boolean;
+      accrual: number;
+      maxNegative: number;
+    }[] = [
+      { code: "CL", name: "Casual leave", isPaid: true, accrual: 1, maxNegative: 0 },
+      { code: "SL", name: "Sick leave", isPaid: true, accrual: 0.5, maxNegative: 0 },
+      /*
+       * Unpaid leave has to be allowed to go negative, or it does not work.
+       *
+       * The balance gate asks the same question of every type: is there
+       * enough left? Nothing accrues to this one — that is what "without pay"
+       * means — so the answer is always no, and an employee who has run out
+       * of paid leave finds the one type that exists for exactly that
+       * situation refusing them. `maxNegative` is how far below zero a
+       * balance may go, and for this type the honest answer is "as far as the
+       * year allows".
+       */
+      { code: "LWP", name: "Leave without pay", isPaid: false, accrual: 0, maxNegative: 365 },
     ];
 
     for (const type of leaveTypes) {
@@ -255,6 +272,7 @@ async function main() {
           leaveTypeId: created.id,
           accrualFrequency: type.accrual > 0 ? "monthly" : "none",
           accrualAmount: type.accrual,
+          maxNegative: type.maxNegative,
         },
       });
     }
