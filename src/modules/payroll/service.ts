@@ -495,31 +495,55 @@ export async function approveRun(ctx: RequestContext, id: string) {
     });
   }
 
-  for (const row of payable) {
-    await ctx.db.payslip.create({
-      data: {
+  /*
+   * Two writes, not two per person.
+   *
+   * This used to be a `create` per payslip with its lines nested inside, so
+   * approving a month for five hundred people was a thousand round trips
+   * taken one at a time — all of them inside the request's transaction, and
+   * so all of them holding one of the very few pooled connections a
+   * serverless function gets. Approving payroll is by definition the moment
+   * there are the most rows to write, which is the worst moment to be doing
+   * it a row at a time.
+   *
+   * `createManyAndReturn` gives back the generated ids in the order the rows
+   * were supplied, which is what lets the lines be written in one go after.
+   */
+  const payslips = await ctx.db.payslip.createManyAndReturn({
+    data: payable.map((row) => ({
+      companyId: ctx.companyId,
+      runId: id,
+      employeeId: row.employee.id,
+      periodDays: row.periodDays,
+      lopDays: row.lopDays,
+      payableDays: row.payableDays,
+      grossMinor: BigInt(row.grossMinor),
+      deductionsMinor: BigInt(row.deductionsMinor),
+      netMinor: BigInt(row.netMinor),
+    })),
+    select: { id: true, employeeId: true },
+  });
+
+  // Matched by employee rather than by position: relying on the order rows
+  // come back in is the kind of assumption that holds until it does not, and
+  // this is somebody's pay.
+  const payslipIdByEmployee = new Map(payslips.map((p) => [p.employeeId, p.id]));
+
+  await ctx.db.payslipItem.createMany({
+    data: payable.flatMap((row) => {
+      const payslipId = payslipIdByEmployee.get(row.employee.id);
+      if (!payslipId) return [];
+      return row.lines.map((line) => ({
         companyId: ctx.companyId,
-        runId: id,
-        employeeId: row.employee.id,
-        periodDays: row.periodDays,
-        lopDays: row.lopDays,
-        payableDays: row.payableDays,
-        grossMinor: BigInt(row.grossMinor),
-        deductionsMinor: BigInt(row.deductionsMinor),
-        netMinor: BigInt(row.netMinor),
-        items: {
-          create: row.lines.map((line) => ({
-            companyId: ctx.companyId,
-            code: line.code,
-            name: line.name,
-            kind: line.kind,
-            amountMinor: BigInt(line.amountMinor),
-            sortOrder: line.sortOrder,
-          })),
-        },
-      },
-    });
-  }
+        payslipId,
+        code: line.code,
+        name: line.name,
+        kind: line.kind,
+        amountMinor: BigInt(line.amountMinor),
+        sortOrder: line.sortOrder,
+      }));
+    }),
+  });
 
   await ctx.db.payrollRun.update({
     where: { id },
