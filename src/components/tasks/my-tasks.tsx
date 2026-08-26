@@ -24,7 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api-client";
 
 import { SERIES } from "./chart-parts";
-import { TrendChart, type TrendPoint } from "./trend-chart";
+import { TrendChart, type TrendPoint } from "./charts-lazy";
 
 /**
  * What I am meant to be doing this month, and how far along it is.

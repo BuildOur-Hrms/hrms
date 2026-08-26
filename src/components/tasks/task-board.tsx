@@ -40,8 +40,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api-client";
 import { bandFor, type CompletionBand } from "@/modules/tasks/completion";
 
-import { RankingChart, type RankingRow } from "./ranking-chart";
-import { TrendChart, type TrendPoint } from "./trend-chart";
+import { RankingChart, TrendChart, type RankingRow, type TrendPoint } from "./charts-lazy";
 
 /**
  * Where everybody stands this month.
