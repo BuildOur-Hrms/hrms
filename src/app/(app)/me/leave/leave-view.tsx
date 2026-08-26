@@ -126,10 +126,23 @@ export function MyLeaveView() {
         <CardContent>
           {balances.isLoading ? (
             <Skeleton className="h-24 w-full" />
-          ) : (balances.data ?? []).length === 0 ? (
+          ) : balances.isError ? (
+            // Not the same thing as having no balances, and saying so saves
+            // somebody a conversation with HR about a working configuration.
             <EmptyState
-              title="No leave types yet"
-              description="HR has not set up any leave types, so there is nothing to apply for."
+              title="Could not load your balances"
+              description="Something went wrong fetching them. Try again in a moment."
+            />
+          ) : (balances.data ?? []).length === 0 ? (
+            /*
+             * A balance is not a leave type. Unpaid leave never has one, and
+             * a type added this morning has none until accrual runs — so this
+             * card cannot say whether HR has configured anything, and it used
+             * to claim they had not while the dialog below offered three.
+             */
+            <EmptyState
+              title="Nothing accrued yet"
+              description="You have no leave balances for this year. You may still be able to apply — open Apply for leave to see what is available."
             />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -229,6 +242,8 @@ export function MyLeaveView() {
           <ApplyForm
             balances={balances.data ?? []}
             leaveTypes={leaveTypes.data ?? []}
+            leaveTypesPending={leaveTypes.isLoading}
+            leaveTypesFailed={leaveTypes.isError}
             onDone={() => {
               setApplyOpen(false);
               void queryClient.invalidateQueries({ queryKey: ["leave"] });
@@ -243,10 +258,14 @@ export function MyLeaveView() {
 function ApplyForm({
   balances,
   leaveTypes,
+  leaveTypesPending,
+  leaveTypesFailed,
   onDone,
 }: {
   balances: LeaveBalance[];
   leaveTypes: { id: string; name: string }[];
+  leaveTypesPending: boolean;
+  leaveTypesFailed: boolean;
   onDone: () => void;
 }) {
   const today = new Date().toISOString().slice(0, 10);
@@ -308,7 +327,21 @@ function ApplyForm({
 
       <div className="grid gap-2">
         <Label htmlFor="leave-type">Type</Label>
-        {leaveTypes.length === 0 ? (
+        {leaveTypesPending ? (
+          <Skeleton className="h-9 w-full" />
+        ) : leaveTypesFailed ? (
+          /*
+           * Three states, not two.
+           *
+           * An empty list and a list that never arrived look identical from
+           * here, and telling somebody their company has no leave types when
+           * the request merely failed sends them to HR about a problem HR
+           * cannot see. Saying which one it is costs one branch.
+           */
+          <p className="text-destructive text-sm">
+            Could not load the leave types. Try again in a moment.
+          </p>
+        ) : leaveTypes.length === 0 ? (
           // Said out loud rather than left as an empty dropdown. "There is
           // nothing to choose" and "this is broken" look identical otherwise.
           <p className="text-muted-foreground text-sm">
