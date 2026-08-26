@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { queryBoolean } from "./validation";
+
 /**
  * Server environment. Parsed once at module load so a misconfigured deploy
  * fails at boot rather than at the first request that needs the variable.
@@ -37,7 +39,7 @@ const schema = z.object({
   /** `auto` suits R2 and MinIO; AWS wants the real region. */
   S3_REGION: z.string().optional(),
   /** MinIO needs path-style addressing; AWS accepts it. */
-  S3_PATH_STYLE: z.coerce.boolean().optional(),
+  S3_PATH_STYLE: queryBoolean.optional(),
   S3_BUCKET: z.string().optional(),
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),

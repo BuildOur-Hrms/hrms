@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { queryBoolean } from "@/lib/validation";
+
 /**
  * Shared by the API and the forms, like every other module: a field absent
  * from the schema cannot reach the database whatever the client sends
@@ -159,7 +161,7 @@ export const listInterviewsSchema = z.object({
   /** `mine` is what this interviewer has been asked to sit on. */
   scope: z.enum(["mine", "all"]).default("mine"),
   applicationId: z.string().uuid().optional(),
-  upcomingOnly: z.coerce.boolean().default(false),
+  upcomingOnly: queryBoolean.default(false),
 });
 export type ListInterviewsInput = z.infer<typeof listInterviewsSchema>;
 

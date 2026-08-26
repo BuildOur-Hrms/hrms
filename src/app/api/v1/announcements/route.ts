@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { queryBoolean } from "@/lib/validation";
+
 import { withApi } from "@/lib/api";
 import {
   assertCanAnnounce,
@@ -11,7 +13,7 @@ export const runtime = "nodejs";
 
 const querySchema = z.object({
   /** Drafts are only ever shown to somebody who could have written one. */
-  includeDrafts: z.coerce.boolean().default(false),
+  includeDrafts: queryBoolean.default(false),
 });
 type Query = z.infer<typeof querySchema>;
 

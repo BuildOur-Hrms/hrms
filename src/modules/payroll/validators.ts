@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { queryBoolean } from "@/lib/validation";
+
 /**
  * What may be said to the payroll endpoints.
  */
@@ -79,6 +81,6 @@ export type RunStatusInput = z.infer<typeof runStatusSchema>;
 export const listPayslipsSchema = z.object({
   runId: z.string().uuid().optional(),
   employeeId: z.string().uuid().optional(),
-  mine: z.coerce.boolean().optional(),
+  mine: queryBoolean.optional(),
 });
 export type ListPayslipsInput = z.infer<typeof listPayslipsSchema>;

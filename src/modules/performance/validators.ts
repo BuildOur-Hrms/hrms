@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { queryBoolean } from "@/lib/validation";
+
 /**
  * What may be said to the performance endpoints.
  */
@@ -80,8 +82,8 @@ export type ReopenReviewInput = z.infer<typeof reopenReviewSchema>;
 export const listReviewsSchema = z.object({
   cycleId: z.string().uuid().optional(),
   employeeId: z.string().uuid().optional(),
-  mine: z.coerce.boolean().optional(),
+  mine: queryBoolean.optional(),
   /** Reviews this person has to write, rather than ones written about them. */
-  toWrite: z.coerce.boolean().optional(),
+  toWrite: queryBoolean.optional(),
 });
 export type ListReviewsInput = z.infer<typeof listReviewsSchema>;

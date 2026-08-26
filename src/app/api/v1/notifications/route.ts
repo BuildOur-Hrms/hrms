@@ -1,12 +1,14 @@
 import { z } from "zod";
 
+import { queryBoolean } from "@/lib/validation";
+
 import { withApi } from "@/lib/api";
 import { listNotifications } from "@/modules/notifications/service";
 
 export const runtime = "nodejs";
 
 const querySchema = z.object({
-  unreadOnly: z.coerce.boolean().default(false),
+  unreadOnly: queryBoolean.default(false),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 type Query = z.infer<typeof querySchema>;

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { queryBoolean } from "@/lib/validation";
+
 /**
  * What may be said to the checklist endpoints.
  */
@@ -74,8 +76,8 @@ export type CompleteTaskInput = z.infer<typeof completeTaskSchema>;
 export const listTasksSchema = z.object({
   kind: z.enum(checklistKinds).optional(),
   employeeId: z.string().uuid().optional(),
-  mine: z.coerce.boolean().optional(),
-  pendingOnly: z.coerce.boolean().optional(),
+  mine: queryBoolean.optional(),
+  pendingOnly: queryBoolean.optional(),
 });
 export type ListTasksInput = z.infer<typeof listTasksSchema>;
 
@@ -117,6 +119,6 @@ export const listExitsSchema = z.object({
    * screen asking "have I resigned" would otherwise be handed somebody
    * else's resignation and show it as theirs.
    */
-  mine: z.coerce.boolean().optional(),
+  mine: queryBoolean.optional(),
 });
 export type ListExitsInput = z.infer<typeof listExitsSchema>;
