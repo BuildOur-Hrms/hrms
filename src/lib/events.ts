@@ -97,7 +97,8 @@ export interface DomainEventMap {
   };
   "document.downloaded": { documentId: string; employeeId: string | null };
   "document.updated": { documentId: string };
-  "document.archived": { documentId: string };
+  /** `replacedBy` is set when a newer upload superseded it rather than HR retiring it. */
+  "document.archived": { documentId: string; replacedBy?: string };
   "announcement.changed": {
     announcementId: string;
     action: "drafted" | "published" | "deleted";

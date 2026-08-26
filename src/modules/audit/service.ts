@@ -218,7 +218,13 @@ const AUDIT_MAP: {
     after: { employeeId: p.employeeId },
   }),
   "document.updated": (p) => ({ entityType: "document", entityId: p.documentId }),
-  "document.archived": (p) => ({ entityType: "document", entityId: p.documentId }),
+  "document.archived": (p) => ({
+    entityType: "document",
+    entityId: p.documentId,
+    // Why it went, not just that it did: a replacement and a retirement look
+    // identical in the row otherwise.
+    ...(p.replacedBy ? { after: { replacedBy: p.replacedBy } } : {}),
+  }),
 
   "employee.created": (p) => ({ entityType: "employee", entityId: p.employeeId, after: p.after }),
   "employee.updated": (p) => ({

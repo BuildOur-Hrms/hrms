@@ -1,4 +1,5 @@
 import type { RequestContext } from "@/lib/context";
+import { list } from "@/lib/api";
 import { BusinessRuleError, ConflictError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
 import { resolveScope } from "@/lib/permissions";
@@ -12,11 +13,12 @@ import {
 } from "@/lib/storage/policy";
 import { fromDateOnly } from "@/lib/utils";
 
-import { canArchive, canRead, canUpload, hasExpired, type Viewer } from "./rules";
+import { canArchive, canRead, canReplace, canUpload, hasExpired, type Viewer } from "./rules";
 import type {
   CategoryInput,
   ListDocumentsInput,
   RequestUploadInput,
+  UpdateCategoryInput,
   UpdateDocumentInput,
 } from "./validators";
 
@@ -47,6 +49,16 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Stands in for "this account has no employee record".
+ *
+ * It has to be a well-formed uuid: these values go into filters against
+ * `employee_id`, and Postgres does not compare an empty string to a uuid
+ * column — it raises, which turns "you own nothing" into a 500. The zero uuid
+ * matches no row, which is the answer that was wanted.
+ */
+const NOBODY = "00000000-0000-0000-0000-000000000000";
+
 function viewerOf(ctx: RequestContext): Viewer {
   return {
     employeeId: ctx.employeeId,
@@ -67,7 +79,14 @@ const DOCUMENT_FIELDS = {
   verifiedAt: true,
   createdAt: true,
   category: {
-    select: { id: true, code: true, name: true, managerVisible: true, employeeUploadable: true },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      managerVisible: true,
+      employeeUploadable: true,
+      expiryRequired: true,
+    },
   },
   employee: {
     select: { id: true, firstName: true, lastName: true, employeeCode: true, managerId: true },
@@ -112,11 +131,7 @@ export async function createCategory(ctx: RequestContext, input: CategoryInput) 
   return category;
 }
 
-export async function updateCategory(
-  ctx: RequestContext,
-  id: string,
-  input: Partial<CategoryInput>,
-) {
+export async function updateCategory(ctx: RequestContext, id: string, input: UpdateCategoryInput) {
   const category = await ctx.db.documentCategory.findFirst({
     where: { id, deletedAt: null },
     select: { id: true },
@@ -191,6 +206,35 @@ export async function requestUpload(ctx: RequestContext, input: RequestUploadInp
     throw new BusinessRuleError(allowed.reason, { rule: "upload_not_allowed" });
   }
 
+  /*
+   * What this upload supersedes, checked here rather than at confirm.
+   *
+   * Confirming archives whatever this points at, so an unchecked id is a way
+   * to archive any document in the company without ever holding the
+   * permission to archive one. It is settled now, while there is still a
+   * request to refuse — by the time the bytes land the decision has been made.
+   */
+  let replacesId: string | null = null;
+  if (input.replacesId) {
+    const replaced = await ctx.db.document.findFirst({
+      where: { id: input.replacesId },
+      select: { id: true, employeeId: true, categoryId: true },
+    });
+    // Not found and not allowed are the same answer on purpose: telling the
+    // two apart turns this into a way to ask whether a document id exists.
+    if (
+      !replaced ||
+      !canReplace(viewerOf(ctx), replaced, {
+        employeeId,
+        categoryId: category.id,
+        categoryEmployeeUploadable: category.employeeUploadable,
+      })
+    ) {
+      throw new NotFoundError("Document");
+    }
+    replacesId = replaced.id;
+  }
+
   // The key is built entirely by the server: nothing the caller sent appears
   // in it, which is what makes traversal impossible rather than filtered.
   const key = buildKey("document", ctx.companyId, employeeId ?? "company", input.contentType);
@@ -207,7 +251,7 @@ export async function requestUpload(ctx: RequestContext, input: RequestUploadInp
       expiryDate: input.expiryDate ? fromDateOnly(input.expiryDate) : null,
       status: "pending",
       uploadedBy: ctx.userId,
-      replacesId: input.replacesId ?? null,
+      replacesId,
     },
     select: { id: true, fileKey: true },
   });
@@ -262,7 +306,22 @@ export async function confirmUpload(ctx: RequestContext, id: string) {
     });
   }
 
-  if (!bytesMatchType(bytes, document.contentType)) {
+  /*
+   * The policy, applied to the bytes rather than to the claim.
+   *
+   * `requestUpload` checked a size the caller stated, and the presigned PUT
+   * does not enforce one — `Content-Length` rides in the query string and is
+   * not a signed header, so S3 ignores it. This is the first point at which
+   * anybody knows how big the file really is, which makes it the only place
+   * the ceiling can be applied.
+   */
+  const arrived = checkUpload({
+    category: "document",
+    contentType: document.contentType,
+    sizeBytes: bytes.byteLength,
+  });
+
+  if (!bytesMatchType(bytes, document.contentType) || !arrived.ok) {
     /*
      * Reported rather than thrown, and the difference matters.
      *
@@ -276,7 +335,7 @@ export async function confirmUpload(ctx: RequestContext, id: string) {
     await ctx.db.document.delete({ where: { id } });
     return {
       rejected: true as const,
-      reason: "That file is not the type it claims to be.",
+      reason: arrived.ok ? "That file is not the type it claims to be." : arrived.reason,
     };
   }
 
@@ -287,12 +346,22 @@ export async function confirmUpload(ctx: RequestContext, id: string) {
   });
 
   // A replacement archives what it replaces, rather than deleting it: last
-  // year's contract is still the contract that was in force last year.
+  // year's contract is still the contract that was in force last year. The
+  // right to do this was settled in `requestUpload`; what is left here is to
+  // say so in the trail, because an archive nobody can attribute is how a
+  // record quietly loses a document.
   if (updated.replacesId) {
-    await ctx.db.document.updateMany({
+    const archived = await ctx.db.document.updateMany({
       where: { id: updated.replacesId, status: { not: "archived" } },
       data: { status: "archived" },
     });
+    if (archived.count > 0) {
+      await emit(
+        "document.archived",
+        { documentId: updated.replacesId, replacedBy: id },
+        actor(ctx),
+      );
+    }
   }
 
   await emit(
@@ -306,50 +375,87 @@ export async function confirmUpload(ctx: RequestContext, id: string) {
 // ─────────────────────────────────────────────── reading
 
 /**
- * The documents this caller may see.
+ * What `canRead` says, written as a query.
  *
- * Scope narrows the query, and the pure rule decides each row — the query
- * cannot express "a manager may see this category and not that one" without
- * duplicating the rule in SQL, and two copies of a rule about identity papers
- * is one too many.
+ * This used to be left to the pure rule alone, on the reasoning that two
+ * copies of a rule about identity papers is one too many. The trouble is
+ * that filtering in memory happens *after* the database has already chosen
+ * which rows to return: a page of twenty, or a cap of five hundred, is filled
+ * with rows the caller may not see and then emptied again. The count is wrong
+ * for the same reason.
+ *
+ * So the rule is expressed here as well, and `canRead` stays as the check
+ * that catches the day the two disagree. Where they must agree is documented
+ * on `canRead` itself.
+ */
+function visibleToViewer(viewer: Viewer, me: string): Record<string, unknown> | null {
+  if (viewer.scope === "all") return null;
+
+  const or: Record<string, unknown>[] = [{ employeeId: null }, { employeeId: me }];
+  if (viewer.scope === "team") {
+    // A report's certificate, and only if the category is one managers see.
+    or.push({ employee: { managerId: me }, category: { managerVisible: true } });
+  }
+
+  // A row whose bytes never arrived is nobody's business but HR's.
+  return { OR: or, status: { not: "pending" } };
+}
+
+/**
+ * The documents this caller may see, one page at a time.
  */
 export async function listDocuments(ctx: RequestContext, input: ListDocumentsInput) {
   const viewer = viewerOf(ctx);
   if (viewer.scope === "none") throw new ForbiddenError("documents.view_own");
 
-  const me = ctx.employeeId ?? "";
+  const me = ctx.employeeId ?? NOBODY;
 
-  const where: Record<string, unknown> = {
-    ...(input.categoryId ? { categoryId: input.categoryId } : {}),
-    ...(input.includeArchived ? {} : { status: { not: "archived" } }),
-  };
+  const and: Record<string, unknown>[] = [
+    ...(input.categoryId ? [{ categoryId: input.categoryId }] : []),
+    ...(input.includeArchived ? [] : [{ status: { not: "archived" } }]),
+  ];
+
+  const visible = visibleToViewer(viewer, me);
+  if (visible) and.push(visible);
 
   if (input.companyOnly) {
-    where["employeeId"] = null;
+    and.push({ employeeId: null });
   } else if (input.mine) {
-    where["employeeId"] = me;
-  } else if (viewer.scope === "all") {
-    if (input.employeeId) where["employeeId"] = input.employeeId;
-  } else if (viewer.scope === "team") {
-    where["OR"] = [{ employeeId: null }, { employeeId: me }, { employee: { managerId: me } }];
-  } else {
-    where["OR"] = [{ employeeId: null }, { employeeId: me }];
+    and.push({ employeeId: me });
+  } else if (input.employeeId) {
+    // Honoured whatever the scope. Narrowing to one person cannot widen what
+    // that person's documents are; `visible` has already said which they are.
+    and.push({ employeeId: input.employeeId });
   }
 
   if (input.expiringWithinDays) {
-    const until = new Date();
+    /*
+     * A window, not a ceiling.
+     *
+     * Without the near edge this asks "expires before some future date",
+     * which every document that lapsed years ago also satisfies — so a
+     * renewals screen fills up with dead paper presented as urgent.
+     */
+    const from = fromDateOnly(today());
+    const until = fromDateOnly(today());
     until.setUTCDate(until.getUTCDate() + input.expiringWithinDays);
-    where["expiryDate"] = { not: null, lte: until };
+    and.push({ expiryDate: { gte: from, lte: until } });
   }
 
-  const rows = await ctx.db.document.findMany({
-    where,
-    orderBy: [{ createdAt: "desc" }],
-    take: 500,
-    select: DOCUMENT_FIELDS,
-  });
+  const where = and.length > 0 ? { AND: and } : {};
 
-  return rows.filter((row) =>
+  const [rows, total] = await Promise.all([
+    ctx.db.document.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }],
+      skip: (input.page - 1) * input.pageSize,
+      take: input.pageSize,
+      select: DOCUMENT_FIELDS,
+    }),
+    ctx.db.document.count({ where }),
+  ]);
+
+  const data = rows.filter((row) =>
     canRead(viewer, {
       employeeId: row.employeeId,
       ownerManagerId: row.employee?.managerId ?? null,
@@ -357,6 +463,8 @@ export async function listDocuments(ctx: RequestContext, input: ListDocumentsInp
       status: row.status,
     }),
   );
+
+  return list(data, { page: input.page, pageSize: input.pageSize, total });
 }
 
 async function loadReadable(ctx: RequestContext, id: string) {
@@ -413,9 +521,23 @@ export async function downloadUrl(ctx: RequestContext, id: string) {
 // ─────────────────────────────────────────────── changing
 
 export async function updateDocument(ctx: RequestContext, id: string, input: UpdateDocumentInput) {
-  await loadReadable(ctx, id);
+  const existing = await loadReadable(ctx, id);
 
   if (!canArchive(viewerOf(ctx))) throw new ForbiddenError("documents.manage");
+
+  /*
+   * The same rule the upload had to satisfy.
+   *
+   * `requestUpload` refuses a document in one of these categories without a
+   * date on it; without the matching guard here, clearing the date afterwards
+   * is a one-request way around it, and a visa with no expiry is a visa
+   * nobody will ever chase.
+   */
+  if (input.expiryDate !== undefined && !input.expiryDate && existing.category.expiryRequired) {
+    throw new BusinessRuleError(`${existing.category.name} needs an expiry date.`, {
+      rule: "expiry_required",
+    });
+  }
 
   const updated = await ctx.db.document.update({
     where: { id },
@@ -433,10 +555,21 @@ export async function updateDocument(ctx: RequestContext, id: string, input: Upd
     select: DOCUMENT_FIELDS,
   });
 
-  // An expiry moved into the future brings a lapsed document back; moved into
-  // the past it takes it out. Either way the status follows the date rather
-  // than waiting for tonight's sweep to notice.
-  if (input.expiryDate !== undefined && updated.status !== "archived") {
+  /*
+   * An expiry moved into the future brings a lapsed document back; moved into
+   * the past it takes it out. Either way the status follows the date rather
+   * than waiting for tonight's sweep to notice.
+   *
+   * Only between those two states, though. `pending` means the bytes were
+   * never confirmed and so never checked against the type they claimed, and
+   * a row promoted out of it by a date change would have skipped that check
+   * entirely — while `confirmUpload` would then refuse the real file as
+   * already confirmed.
+   */
+  if (
+    input.expiryDate !== undefined &&
+    (updated.status === "active" || updated.status === "expired")
+  ) {
     const stale = updated.expiryDate
       ? hasExpired(updated.expiryDate.toISOString().slice(0, 10), today())
       : false;
@@ -467,20 +600,5 @@ export async function archiveDocument(ctx: RequestContext, id: string) {
   return { id, status: "archived" };
 }
 
-/**
- * The nightly sweep: flip anything that has lapsed.
- *
- * Separate from the notice run because they answer different questions —
- * "is this still valid" is a fact about the document, and "does anybody need
- * telling" is a fact about the day.
- */
-export async function expireDocuments(ctx: RequestContext, on: string): Promise<number> {
-  const boundary = fromDateOnly(on);
-
-  const result = await ctx.db.document.updateMany({
-    where: { status: "active", expiryDate: { not: null, lt: boundary } },
-    data: { status: "expired" },
-  });
-
-  return result.count;
-}
+// The nightly sweep and its notices live in `./expiry`, which the
+// document-expiry cron calls once per company per day.

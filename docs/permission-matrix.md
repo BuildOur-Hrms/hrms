@@ -47,6 +47,7 @@
 | `PATCH /api/v1/companies/current` | `company.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/cron/attendance-daily-calc` | _scheduler_ | — | — | — | — |
 | `GET /api/v1/cron/daily-notices` | _scheduler_ | — | — | — | — |
+| `GET /api/v1/cron/document-expiry` | _scheduler_ | — | — | — | — |
 | `GET /api/v1/cron/leave-accrual` | _scheduler_ | — | — | — | — |
 | `GET /api/v1/departments` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/departments` | `department.manage` | ✓ | ✓ | · | · |
@@ -197,4 +198,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**185 endpoints.** Permission-gated endpoints reachable per role — super_admin: 122 · hr_admin: 122 · manager: 34 · employee: 28.
+**186 endpoints.** Permission-gated endpoints reachable per role — super_admin: 122 · hr_admin: 122 · manager: 34 · employee: 28.

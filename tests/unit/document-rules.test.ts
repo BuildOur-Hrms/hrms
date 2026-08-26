@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   canArchive,
   canRead,
+  canReplace,
   canUpload,
   daysUntil,
   hasExpired,
@@ -185,5 +186,55 @@ describe("expiring", () => {
 
   it("is expired the day after", () => {
     expect(hasExpired("2027-03-31", "2027-04-01")).toBe(true);
+  });
+});
+
+describe("replacing a document", () => {
+  /*
+   * Confirming an upload archives whatever it says it replaces, so this is
+   * the archive rule wearing a different hat — and it was missing entirely,
+   * which let anyone retire any document in the company by naming it.
+   */
+  const ownCertificate = { employeeId: "owner", categoryId: "certificates" };
+  const newCertificate = {
+    employeeId: "owner",
+    categoryId: "certificates",
+    categoryEmployeeUploadable: true,
+  };
+
+  it("lets somebody supersede their own, in a category they may upload into", () => {
+    expect(canReplace(OWNER, ownCertificate, newCertificate)).toBe(true);
+  });
+
+  it("lets HR replace anything", () => {
+    expect(canReplace(HR, { employeeId: "owner", categoryId: "passports" }, newCertificate)).toBe(
+      true,
+    );
+  });
+
+  it("refuses somebody else's document", () => {
+    expect(canReplace(STRANGER, ownCertificate, newCertificate)).toBe(false);
+  });
+
+  it("refuses a manager a report's document", () => {
+    expect(canReplace(MANAGER, ownCertificate, newCertificate)).toBe(false);
+  });
+
+  it("refuses a company document, which belongs to nobody to supersede", () => {
+    expect(canReplace(OWNER, { employeeId: null, categoryId: "policies" }, newCertificate)).toBe(
+      false,
+    );
+  });
+
+  it("refuses crossing categories, which is a new document rather than a version", () => {
+    expect(
+      canReplace(OWNER, { employeeId: "owner", categoryId: "passports" }, newCertificate),
+    ).toBe(false);
+  });
+
+  it("refuses a category the employee may not upload into", () => {
+    expect(
+      canReplace(OWNER, ownCertificate, { ...newCertificate, categoryEmployeeUploadable: false }),
+    ).toBe(false);
   });
 });

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { queryBoolean } from "@/lib/validation";
+
 /**
  * What may be said to the document endpoints.
  */
@@ -29,6 +31,26 @@ export const categorySchema = z.object({
 export type CategoryInput = z.infer<typeof categorySchema>;
 
 /**
+ * Changing one.
+ *
+ * Written out rather than derived with `categorySchema.partial()`, which does
+ * not do what it looks like it does: `.partial()` makes a field optional
+ * without removing its default, so an absent key still arrives as `false` and
+ * every guard downstream reads it as a deliberate `false`. Renaming a
+ * category would quietly clear `expiryRequired` and `employeeUploadable`
+ * along with it. The code is left out because a category's code is what
+ * everything else refers to it by.
+ */
+export const updateCategorySchema = z.object({
+  name: z.string().trim().min(1, "Required").max(80).optional(),
+  employeeUploadable: z.boolean().optional(),
+  managerVisible: z.boolean().optional(),
+  expiryRequired: z.boolean().optional(),
+  sortOrder: z.coerce.number().int().min(0).max(999).optional(),
+});
+export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
+
+/**
  * Asking for somewhere to put a file.
  *
  * The size and type are declared here so an oversized or unwanted file is
@@ -53,13 +75,15 @@ export const requestUploadSchema = z.object({
 export type RequestUploadInput = z.infer<typeof requestUploadSchema>;
 
 export const listDocumentsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
   employeeId: z.string().uuid().optional(),
   categoryId: z.string().uuid().optional(),
   /** Company-level documents — the ones with no owner. */
-  companyOnly: z.coerce.boolean().optional(),
-  mine: z.coerce.boolean().optional(),
+  companyOnly: queryBoolean.optional(),
+  mine: queryBoolean.optional(),
   expiringWithinDays: z.coerce.number().int().min(1).max(365).optional(),
-  includeArchived: z.coerce.boolean().optional(),
+  includeArchived: queryBoolean.optional(),
 });
 export type ListDocumentsInput = z.infer<typeof listDocumentsSchema>;
 

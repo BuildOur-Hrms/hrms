@@ -86,6 +86,37 @@ export function canArchive(viewer: Viewer): boolean {
 }
 
 /**
+ * Whether this viewer may put a new version over an existing document.
+ *
+ * A replacement archives what it replaces, so it is archiving under another
+ * name and needs the same authority — with one exception that is not really
+ * archiving at all: superseding your own document in a category you were
+ * allowed to upload into, which is what "here is a newer copy of my
+ * certificate" means. Anything else, including replacing a company document
+ * or somebody else's, is HR's.
+ */
+export function canReplace(
+  viewer: Viewer,
+  replaced: { employeeId: string | null; categoryId: string },
+  replacement: {
+    employeeId: string | null;
+    categoryId: string;
+    categoryEmployeeUploadable: boolean;
+  },
+): boolean {
+  if (canArchive(viewer)) return true;
+
+  const mine = viewer.employeeId !== null && replaced.employeeId === viewer.employeeId;
+
+  return (
+    mine &&
+    replaced.employeeId === replacement.employeeId &&
+    replaced.categoryId === replacement.categoryId &&
+    replacement.categoryEmployeeUploadable
+  );
+}
+
+/**
  * How close a document is to expiring, in days.
  *
  * Negative once it has passed. Plain calendar arithmetic in UTC, because an
