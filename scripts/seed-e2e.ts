@@ -141,12 +141,29 @@ async function main() {
       update: { isDefault: true },
       select: { id: true },
     });
-    const leaveType = await db.leaveType.upsert({
-      where: { companyId_code: { companyId, code: "CL" } },
-      create: { companyId, name: "Casual leave", code: "CL", isPaid: true },
-      update: { deletedAt: null },
-      select: { id: true },
+    /*
+     * Not an upsert, for the same reason the three above are not.
+     *
+     * `leave_types_company_id_code_key` is partial — `WHERE deleted_at IS
+     * NULL`, so a retired code can be used again — and Postgres will not use
+     * a partial index for `ON CONFLICT` unless the statement repeats the
+     * predicate, which Prisma's upsert does not.
+     */
+    const existingLeaveType = await db.leaveType.findFirst({
+      where: { companyId, code: "CL" },
+      select: { id: true, deletedAt: true },
     });
+    const leaveType = existingLeaveType
+      ? await db.leaveType.update({
+          where: { id: existingLeaveType.id },
+          // A previous run may have archived it; the fixture wants it live.
+          data: { deletedAt: null },
+          select: { id: true },
+        })
+      : await db.leaveType.create({
+          data: { companyId, name: "Casual leave", code: "CL", isPaid: true },
+          select: { id: true },
+        });
     await db.leavePolicy.upsert({
       where: { leaveTypeId: leaveType.id },
       create: {
