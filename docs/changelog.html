@@ -1,0 +1,178 @@
+<!doctype html><html><head><meta charset="utf-8"><title>HRMS — Build Changelog</title><style>
+@page { size: A4; margin: 16mm 14mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1c1917; line-height: 1.5; margin: 0; }
+.cover { height: 244mm; display: flex; flex-direction: column; justify-content: center; }
+.cover h1 { font-size: 32pt; color: #a4551f; margin: 0 0 3mm; letter-spacing: -0.5pt; }
+.cover .sub { font-size: 13pt; color: #57534e; margin-bottom: 10mm; }
+.rule { height: 3px; background: #c2410c; width: 40mm; margin-bottom: 9mm; }
+.stats { display: flex; gap: 3.5mm; margin-bottom: 11mm; }
+.stat { flex: 1; border: 1px solid #e7e5e4; border-radius: 4px; padding: 4mm 2mm; text-align: center; }
+.stat .n { font-size: 19pt; font-weight: 700; color: #a4551f; display: block; line-height: 1.1; }
+.stat .l { font-size: 7.6pt; color: #78716c; text-transform: uppercase; letter-spacing: 0.6pt; }
+.lede { font-size: 11pt; color: #292524; background: #fdf6f1; border-left: 3px solid #c2410c; padding: 4mm 5mm; border-radius: 0 4px 4px 0; }
+.meta { color: #78716c; font-size: 8.5pt; margin-top: 10mm; }
+section { page-break-before: always; }
+h2 { font-size: 15pt; color: #a4551f; margin: 0 0 1mm; }
+h2 .tag { font-size: 9pt; color: #78716c; font-weight: 400; letter-spacing: 0.4pt; text-transform: uppercase; display: block; margin-bottom: 1.5mm; }
+h3 { font-size: 11.5pt; color: #292524; margin: 6mm 0 2mm; }
+.intro { color: #57534e; margin: 0 0 5mm; font-size: 10pt; }
+p { margin: 0 0 2.5mm; }
+table { border-collapse: collapse; width: 100%; margin: 0 0 4mm; font-size: 9pt; }
+th { background: #a4551f; color: #fff; text-align: left; padding: 1.8mm 2.5mm; font-weight: 600; font-size: 8.6pt; letter-spacing: 0.3pt; }
+td { border: 1px solid #e7e5e4; padding: 1.8mm 2.5mm; vertical-align: top; }
+tr { page-break-inside: avoid; }
+tbody tr:nth-child(even) { background: #fafaf9; }
+td.area { font-weight: 600; color: #1c1917; }
+ul { margin: 0 0 3mm; padding-left: 5mm; }
+li { margin-bottom: 1.2mm; }
+.pill { display: inline-block; font-size: 7.6pt; font-weight: 700; letter-spacing: 0.5pt; padding: 0.6mm 2mm; border-radius: 3px; text-transform: uppercase; vertical-align: middle; }
+.done { background: #dcfce7; color: #166534; }
+.part { background: #fef3c7; color: #92400e; }
+.none { background: #f5f5f4; color: #57534e; }
+.note { background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 4px; padding: 3.5mm 4mm; font-size: 9.2pt; color: #44403c; margin: 0 0 4mm; }
+.note strong { color: #1c1917; }
+footer { margin-top: 8mm; padding-top: 3mm; border-top: 1px solid #e7e5e4; font-size: 8pt; color: #a8a29e; }
+</style></head><body>
+
+<div class="cover">
+  <div class="rule"></div>
+  <h1>HRMS &mdash; Build Changelog</h1>
+  <div class="sub">What has been built, and what is still to come</div>
+  <div class="stats">
+    <div class="stat"><span class="n">13</span><span class="l">Areas live</span></div>
+    <div class="stat"><span class="n">36</span><span class="l">Screens</span></div>
+    <div class="stat"><span class="n">186</span><span class="l">Endpoints</span></div>
+    <div class="stat"><span class="n">48</span><span class="l">Tables</span></div>
+    <div class="stat"><span class="n">781</span><span class="l">Tests</span></div>
+  </div>
+  <div class="lede">
+    The day-to-day half of the system is finished and usable: people, attendance,
+    leave, shifts, hiring, onboarding, offboarding and performance all work end to
+    end. Payroll and documents are fully built underneath but have no screens yet.
+    Expenses and training have not been started.
+  </div>
+  <div class="meta">BuildOur AI &middot; 26 August 2026 &middot; 129 commits since 22 August 2026</div>
+</div>
+
+<section>
+  <h2><span class="tag">Section one</span>What works today <span class="pill done">Live</span></h2>
+  <p class="intro">These have screens. A person can log in and use them.</p>
+  <table>
+    <tr><th style="width:40mm">Area</th><th>What it does</th></tr>
+    <tr><td class="area">Login &amp; accounts</td><td>Invite someone by email and they set their own password. Forgot-password and reset. Four roles: employee, manager, HR admin, super admin.</td></tr>
+    <tr><td class="area">People</td><td>Employee records, departments, designations, office locations, personal profiles and emergency contacts.</td></tr>
+    <tr><td class="area">Attendance</td><td>Check in and out, a monthly calendar, correction requests with manager approval, HR entering a day by hand, and locking a month so payroll can trust it.</td></tr>
+    <tr><td class="area">Leave</td><td>Leave types, balances that build up monthly, apply &rarr; approve &rarr; cancel, and a holiday calendar. The cost in days is shown before you submit.</td></tr>
+    <tr><td class="area">Shifts</td><td>Shift patterns, who is on which shift, and the history of every change.</td></tr>
+    <tr><td class="area">Hiring</td><td>Job postings, candidates, interviews, offers, and turning an accepted offer into an employee.</td></tr>
+    <tr><td class="area">Onboarding</td><td>A checklist per new joiner. They cannot be marked active until the required items are done.</td></tr>
+    <tr><td class="area">Offboarding</td><td>Resignation &rarr; exit checklist &rarr; last working day &rarr; account closed.</td></tr>
+    <tr><td class="area">Performance</td><td>Review cycles, goals, self-review and manager review.</td></tr>
+    <tr><td class="area">Tasks</td><td>Monthly job tasks with a weighted completion percentage per person.</td></tr>
+    <tr><td class="area">Reports</td><td>Seven reports covering headcount, attendance and leave, plus audit activity. All exportable.</td></tr>
+    <tr><td class="area">Notifications</td><td>In-app bell and email for anything needing action, plus daily notices for birthdays, work anniversaries and probation endings.</td></tr>
+    <tr><td class="area">Admin</td><td>User accounts, role assignment, company settings, announcements, and a full audit log of who did what.</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2><span class="tag">Section two</span>Built, but not yet visible <span class="pill part">Needs screens</span></h2>
+  <p class="intro">
+    The logic, the database tables, the rules and the tests are done and passing.
+    What is missing is the pages &mdash; nobody can click these yet.
+  </p>
+
+  <h3>Payroll</h3>
+  <p>
+    Salary components, a monthly payroll run, a preview before you commit, an approval
+    step, a payslip per person, and a CSV export for a finance system to pick up.
+    Deliberately simple, because a separate finance system is intended to own the money
+    side later.
+  </p>
+  <p><strong>Missing:</strong> an HR payroll screen, and a payslip screen for employees.</p>
+
+  <h3>Documents</h3>
+  <p>
+    Upload and download, document categories, and rules about who may see what &mdash; a
+    manager can see a report's training certificate but not their passport. Files are
+    checked to confirm they really are the type they claim to be. Expiry warnings go out
+    30 days before, 7 days before, and on the day; that nightly job is running.
+  </p>
+  <p><strong>Missing:</strong> an HR documents screen, an employee documents screen, and a documents tab on the employee record.</p>
+
+  <div class="note">
+    <strong>Why this matters for planning.</strong> The hard and risky parts of both
+    &mdash; the money arithmetic, and the who-can-see-what rules for personal papers
+    &mdash; are written and tested. Each is roughly a screen-building exercise away from
+    being usable, not a rebuild.
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag">Section three</span>Not started yet <span class="pill none">To do</span></h2>
+  <table>
+    <tr><th style="width:50mm">Item</th><th>Note</th></tr>
+    <tr><td class="area">Expenses</td><td>Claims and reimbursements. Sensibly waits until payroll is usable.</td></tr>
+    <tr><td class="area">Training / LMS</td><td>The largest remaining item, and the least urgent day to day.</td></tr>
+    <tr><td class="area">Nine more reports</td><td>Seven of the sixteen planned reports are built.</td></tr>
+    <tr><td class="area">Custom roles</td><td>Four fixed roles today. Inventing your own comes later &mdash; the permission system is already built to allow it.</td></tr>
+    <tr><td class="area">Change your own password</td><td>Today you can only reset it by email. Changing it while signed in is not wired up.</td></tr>
+    <tr><td class="area">Backup restore drill</td><td>Backups run. Actually rehearsing a restore is the one go-live item not yet ticked off.</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2><span class="tag">Section four</span>How it is being built</h2>
+  <p class="intro">Context for anyone judging whether this is solid.</p>
+
+  <h3>Every change is checked automatically</h3>
+  <p>
+    781 automated tests run on every single change, and nothing reaches the main branch
+    unless all of them pass: 415 checking calculations in isolation, 307 running real
+    requests against a real database, and 59 driving an actual browser through journeys
+    like signing in, checking in, and requesting leave.
+  </p>
+
+  <h3>One company cannot see another's data</h3>
+  <p>
+    Two independent layers enforce this. The application always filters by company, and
+    the database itself refuses to return another company's rows even if the application
+    forgets. Both are tested on every endpoint.
+  </p>
+
+  <h3>Permissions are checked, not assumed</h3>
+  <p>
+    Every endpoint is crossed against all four roles in a generated test grid, so a
+    permission that quietly stops being enforced fails the build.
+  </p>
+
+  <h3>Everything important is written down</h3>
+  <p>
+    Who did what, and when, goes to an audit log that cannot be edited afterwards &mdash;
+    including sign-ins, approvals, and anyone opening somebody's documents.
+  </p>
+</section>
+
+<section>
+  <h2><span class="tag">Section five</span>Suggested next step</h2>
+  <p class="intro">One recommendation, and the reasoning behind it.</p>
+  <div class="note">
+    <strong>Build the payroll screens next.</strong> It is the largest piece of finished
+    work currently sitting invisible, the export to a finance system is already written
+    and tested, and it depends on month-locking, which has been working since the
+    attendance module shipped. Documents is the natural one after it.
+  </div>
+
+  <h3>Honest caveats</h3>
+  <ul>
+    <li>Payroll has not yet been run in parallel against a real manual payroll for a full month. That comparison should happen before anyone is paid from it.</li>
+    <li>The restore drill has not been performed. Backups existing is not the same as knowing they work.</li>
+    <li>Custom roles are not available, so the four built-in roles have to fit how the company actually works.</li>
+    <li>The system has not yet been run with a full company of real people on it for a sustained period.</li>
+  </ul>
+
+  <footer>HRMS Build Changelog &middot; BuildOur AI &middot; Generated 26 August 2026 from the repository at commit 8ea38a5</footer>
+</section>
+
+</body></html>
