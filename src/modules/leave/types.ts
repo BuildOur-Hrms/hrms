@@ -75,6 +75,10 @@ function present<T extends TypeRow>(row: T) {
 
 export async function listLeaveTypes(ctx: RequestContext) {
   const rows = await ctx.db.leaveType.findMany({
+    // Archived types are gone from every list, including the apply form.
+    // Deleting one sets `deleted_at` and nothing was reading it, so a type
+    // somebody had retired stayed on offer to every employee.
+    where: { deletedAt: null },
     orderBy: { name: "asc" },
     select: {
       ...TYPE_FIELDS,

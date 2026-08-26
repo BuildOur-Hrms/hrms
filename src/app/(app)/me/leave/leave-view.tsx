@@ -79,6 +79,19 @@ export function MyLeaveView() {
       api.get<LeaveBalance[]>("/leave/balances", { year: String(year) }, signal),
   });
 
+  /*
+   * Every leave type, not only the ones with a balance row.
+   *
+   * The picker used to be built from balances, so a type nobody had allocated
+   * yet simply did not appear — and an employee looking at an empty dropdown
+   * has no way to tell that from the app being broken. Unpaid leave has the
+   * same problem by definition: there is never a balance for it.
+   */
+  const leaveTypes = useQuery({
+    queryKey: ["leave", "types"],
+    queryFn: ({ signal }) => api.get<{ id: string; name: string }[]>("/leave-types", {}, signal),
+  });
+
   const requests = useQuery({
     queryKey: ["leave", "requests", "mine"],
     queryFn: ({ signal }) => api.get<LeaveRequest[]>("/leave/requests", { scope: "mine" }, signal),
@@ -215,6 +228,7 @@ export function MyLeaveView() {
           </DialogHeader>
           <ApplyForm
             balances={balances.data ?? []}
+            leaveTypes={leaveTypes.data ?? []}
             onDone={() => {
               setApplyOpen(false);
               void queryClient.invalidateQueries({ queryKey: ["leave"] });
@@ -226,7 +240,15 @@ export function MyLeaveView() {
   );
 }
 
-function ApplyForm({ balances, onDone }: { balances: LeaveBalance[]; onDone: () => void }) {
+function ApplyForm({
+  balances,
+  leaveTypes,
+  onDone,
+}: {
+  balances: LeaveBalance[];
+  leaveTypes: { id: string; name: string }[];
+  onDone: () => void;
+}) {
   const today = new Date().toISOString().slice(0, 10);
   const [leaveTypeId, setLeaveTypeId] = useState("");
   const [startDate, setStartDate] = useState(today);
@@ -286,18 +308,30 @@ function ApplyForm({ balances, onDone }: { balances: LeaveBalance[]; onDone: () 
 
       <div className="grid gap-2">
         <Label htmlFor="leave-type">Type</Label>
-        <Select value={leaveTypeId} onValueChange={(v) => setLeaveTypeId(v ?? "")}>
-          <SelectTrigger id="leave-type" className="w-full">
-            <SelectValue placeholder="Choose a leave type" />
-          </SelectTrigger>
-          <SelectContent>
-            {balances.map((b) => (
-              <SelectItem key={b.leaveType.id} value={b.leaveType.id}>
-                {b.leaveType.name} · {b.current} left
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {leaveTypes.length === 0 ? (
+          // Said out loud rather than left as an empty dropdown. "There is
+          // nothing to choose" and "this is broken" look identical otherwise.
+          <p className="text-muted-foreground text-sm">
+            No leave types have been set up yet. Ask your HR team to add them.
+          </p>
+        ) : (
+          <Select value={leaveTypeId} onValueChange={(v) => setLeaveTypeId(v ?? "")}>
+            <SelectTrigger id="leave-type" className="w-full">
+              <SelectValue placeholder="Choose a leave type" />
+            </SelectTrigger>
+            <SelectContent>
+              {leaveTypes.map((type) => {
+                const balance = balances.find((b) => b.leaveType.id === type.id);
+                return (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.name}
+                    {balance ? ` · ${balance.current} left` : ""}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

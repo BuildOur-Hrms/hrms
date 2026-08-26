@@ -217,9 +217,52 @@ async function main() {
       select: { id: true },
     });
 
+    /*
+     * Leave types, because a company with none is a company where the apply
+     * form has nothing in it.
+     *
+     * Three, and deliberately not more: casual and sick, which accrue, and
+     * unpaid, which does not and has no balance by design. Anything beyond
+     * that is a policy decision belonging to the company rather than to a
+     * seed, and HR can add types under HR → Leave.
+     */
+    const leaveTypes: { code: string; name: string; isPaid: boolean; accrual: number }[] = [
+      { code: "CL", name: "Casual leave", isPaid: true, accrual: 1 },
+      { code: "SL", name: "Sick leave", isPaid: true, accrual: 0.5 },
+      { code: "LWP", name: "Leave without pay", isPaid: false, accrual: 0 },
+    ];
+
+    for (const type of leaveTypes) {
+      const existing = await db.leaveType.findFirst({
+        where: { companyId: company.id, code: type.code },
+        select: { id: true },
+      });
+      if (existing) continue;
+
+      const created = await db.leaveType.create({
+        data: {
+          companyId: company.id,
+          code: type.code,
+          name: type.name,
+          isPaid: type.isPaid,
+        },
+        select: { id: true },
+      });
+
+      await db.leavePolicy.create({
+        data: {
+          companyId: company.id,
+          leaveTypeId: created.id,
+          accrualFrequency: type.accrual > 0 ? "monthly" : "none",
+          accrualAmount: type.accrual,
+        },
+      });
+    }
+
     return { location, department, designation, shift };
   }, step);
   log("org: Head Office / Administration / Administrator / General shift");
+  log("leave: Casual leave / Sick leave / Leave without pay");
 
   // ── 7. administrator accounts, invited (never seeded with a password)
   const roleIds = await withPlatform(
