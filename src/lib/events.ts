@@ -36,6 +36,8 @@ export interface DomainEventMap {
   "auth.logged_out": { userId: string };
   "auth.password_reset_requested": { userId: string };
   "auth.password_reset": { userId: string };
+  /** Changed from inside the app, with the old password given, not by a reset link. */
+  "auth.password_changed": { userId: string };
   "auth.invite_accepted": { userId: string };
   "auth.account_locked": { userId: string; until: string };
 

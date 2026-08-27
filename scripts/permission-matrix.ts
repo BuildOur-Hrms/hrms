@@ -59,6 +59,8 @@ export interface RouteDeclaration {
 export const SESSION_ONLY_REASONS: Record<string, string> = {
   "GET /api/v1/auth/me": "Your own identity, and nothing else.",
   "POST /api/v1/auth/logout": "Ending your own session needs no permission.",
+  "POST /api/v1/auth/change-password":
+    "Changing your own password. The only account it can touch is the one making the request, and the current password stands in for the proof of identity a reset link would carry.",
   "GET /api/v1/me/profile": "Your own profile.",
   "PATCH /api/v1/me/profile": "Your own profile, through a field allowlist.",
   "POST /api/v1/me/profile/complete":

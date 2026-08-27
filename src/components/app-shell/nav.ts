@@ -38,7 +38,8 @@ export type NavIconName =
   | "hiring"
   | "onboarding"
   | "offboarding"
-  | "performance";
+  | "performance"
+  | "security";
 
 export interface NavItem {
   label: string;
@@ -63,6 +64,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Overview", href: "/me", icon: "home", permissions: [] },
       { label: "My profile", href: "/me/profile", icon: "profile", permissions: [] },
+      { label: "Security", href: "/me/security", icon: "security", permissions: [] },
       {
         label: "My attendance",
         href: "/me/attendance",

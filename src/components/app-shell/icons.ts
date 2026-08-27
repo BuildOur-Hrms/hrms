@@ -15,6 +15,7 @@ import {
   MapPin,
   Settings,
   ShieldCheck,
+  KeyRound,
   Target,
   UserCircle,
   UserCog,
@@ -56,4 +57,5 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   onboarding: ClipboardCheck,
   offboarding: DoorOpen,
   performance: Target,
+  security: KeyRound,
 };

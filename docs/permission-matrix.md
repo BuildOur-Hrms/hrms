@@ -31,6 +31,7 @@
 | `GET /api/v1/audit-logs` | `audit.view_all` | ✓ | ✓ | · | · |
 | `GET /api/v1/audit-logs/export` | `audit.export` | ✓ | ✓ | · | · |
 | `POST /api/v1/auth/accept-invite` | _public_ | — | — | — | — |
+| `POST /api/v1/auth/change-password` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `POST /api/v1/auth/forgot-password` | _public_ | — | — | — | — |
 | `POST /api/v1/auth/login` | _public_ | — | — | — | — |
 | `POST /api/v1/auth/logout` | _session_ | ✓ | ✓ | ✓ | ✓ |
@@ -198,4 +199,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**186 endpoints.** Permission-gated endpoints reachable per role — super_admin: 122 · hr_admin: 122 · manager: 34 · employee: 28.
+**187 endpoints.** Permission-gated endpoints reachable per role — super_admin: 122 · hr_admin: 122 · manager: 34 · employee: 28.

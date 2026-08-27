@@ -52,6 +52,7 @@ const AUDIT_MAP: {
   "auth.logged_out": (p) => ({ entityType: "user", entityId: p.userId }),
   "auth.password_reset_requested": (p) => ({ entityType: "user", entityId: p.userId }),
   "auth.password_reset": (p) => ({ entityType: "user", entityId: p.userId }),
+  "auth.password_changed": (p) => ({ entityType: "user", entityId: p.userId }),
   "auth.invite_accepted": (p) => ({ entityType: "user", entityId: p.userId }),
   "auth.account_locked": (p) => ({
     entityType: "user",

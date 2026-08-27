@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, LogOut, Menu, Moon, Sun, UserCircle } from "lucide-react";
+import { ChevronDown, KeyRound, LogOut, Menu, Moon, Sun, UserCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -136,6 +136,10 @@ export function Topbar({
           <DropdownMenuItem nativeButton={false} render={<Link href="/me/profile" />}>
             <UserCircle className="size-4" />
             My profile
+          </DropdownMenuItem>
+          <DropdownMenuItem nativeButton={false} render={<Link href="/me/security" />}>
+            <KeyRound className="size-4" />
+            Security
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {/* `onClick`, not `onSelect`. Base UI's MenuItem has no onSelect —

@@ -1,7 +1,7 @@
 import type { RequestContext } from "@/lib/context";
 import { withPlatform, type TenantTx } from "@/lib/db";
 import { env } from "@/lib/env";
-import { AuthError, BusinessRuleError, ValidationError } from "@/lib/errors";
+import { AuthError, BusinessRuleError, NotFoundError, ValidationError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
 import { enqueue } from "@/lib/queue";
 import { renderEmailShell, escapeHtml } from "@/lib/email";
@@ -11,7 +11,12 @@ import { getSettings } from "@/modules/settings/service";
 
 import { checkPasswordPolicy, dummyHash, hashPassword, verifyPassword } from "./password";
 import { buildInviteUrl, buildResetUrl, hashToken, issueToken } from "./tokens";
-import type { ForgotPasswordInput, LoginInput, ResetPasswordInput } from "./validators";
+import type {
+  ChangePasswordInput,
+  ForgotPasswordInput,
+  LoginInput,
+  ResetPasswordInput,
+} from "./validators";
 
 /**
  * Authentication (docs/05-architecture.md §4, docs/09-security.md §2).
@@ -444,6 +449,100 @@ export async function resetPassword(
       actorFor(meta, row.user.companyId, row.user.id, tx as unknown as TenantTx),
     );
   });
+}
+
+/**
+ * Change your own password, while signed in.
+ *
+ * Distinct from a reset in the one way that matters: nobody has proved they
+ * control the mailbox, so the current password is what stands in for that
+ * proof. It is checked with the same constant-time comparison a login uses,
+ * because "is this the right password" is the same question here as there.
+ *
+ * Every other session is ended. Changing a password is what somebody does
+ * when they think a session they cannot see is a session they did not start,
+ * and a change that left those alive would be a change that did nothing.
+ * The caller keeps theirs — a fresh token is returned for the route to set,
+ * because signing somebody out of the screen they just used to secure their
+ * account teaches them not to bother next time.
+ */
+export async function changePassword(
+  ctx: RequestContext,
+  input: ChangePasswordInput,
+): Promise<{ token: string }> {
+  /*
+   * `ctx.db`, not `withPlatform`.
+   *
+   * The handler is already inside the request's tenant transaction, and
+   * opening a second connection from within it waits on a pool that the
+   * first connection is holding — which shows up as a two-second timeout
+   * rather than an error that says so. `User` is a tenant-scoped model, so
+   * the extension confines this to the caller's own company anyway.
+   */
+  const user = await ctx.db.user.findFirst({
+    where: { id: ctx.userId },
+    select: { id: true, companyId: true, passwordHash: true },
+  });
+  if (!user) throw new NotFoundError("Account");
+
+  // An account invited but never accepted has no password to change. It
+  // cannot normally reach here — such a user is not `active` and so cannot
+  // hold a session — but the column is nullable and a check costs nothing.
+  if (!user.passwordHash) {
+    throw new BusinessRuleError("This account has no password set yet. Use the invite link.", {
+      rule: "no_password_set",
+    });
+  }
+
+  const valid = await verifyPassword(user.passwordHash, input.currentPassword);
+  if (!valid) {
+    throw new ValidationError("That is not your current password", {
+      currentPassword: ["That is not your current password"],
+    });
+  }
+
+  if (input.currentPassword === input.newPassword) {
+    throw new BusinessRuleError("The new password must be different from the current one.", {
+      rule: "password_unchanged",
+    });
+  }
+
+  const settings = await getSettings(ctx.db, ctx.companyId);
+  const policy = checkPasswordPolicy(input.newPassword, settings["security.password_min_length"]);
+  if (!policy.ok) {
+    throw new ValidationError("Password does not meet the policy", {
+      newPassword: policy.problems,
+    });
+  }
+
+  const passwordHash = await hashPassword(input.newPassword);
+
+  const updated = await ctx.db.user.update({
+    where: { id: user.id },
+    data: { passwordHash, sessionVersion: { increment: 1 } },
+    select: { sessionVersion: true },
+  });
+
+  await emit(
+    "auth.password_changed",
+    { userId: user.id },
+    {
+      userId: ctx.userId,
+      companyId: ctx.companyId,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      requestId: ctx.requestId,
+      db: ctx.db,
+    },
+  );
+
+  return {
+    token: await createSessionToken({
+      userId: user.id,
+      companyId: user.companyId,
+      sessionVersion: updated.sessionVersion,
+    }),
+  };
 }
 
 // ─────────────────────────────────────────────── invites
