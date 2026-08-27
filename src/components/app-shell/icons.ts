@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Bell,
+  Banknote,
   Briefcase,
   Building2,
   CalendarCheck,
@@ -58,4 +59,5 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   offboarding: DoorOpen,
   performance: Target,
   security: KeyRound,
+  payroll: Banknote,
 };

@@ -1,3 +1,5 @@
+import { formatMinor } from "@/lib/money";
+
 /**
  * The shapes the recruitment screens read.
  *
@@ -147,13 +149,12 @@ export function candidateName(candidate: { firstName: string; lastName: string |
 }
 
 /**
- * Minor units to something a person reads.
+ * Minor units to something a person reads, to the nearest whole unit.
  *
- * No currency symbol: the company's currency lives on the company record and
- * the screens that show money already say which one. Guessing here would put
- * a rupee sign on a dollar figure.
+ * Whole units here on purpose: these are salary ranges and offer figures,
+ * where the paise are noise. A payslip shows them, and calls `formatMinor`
+ * with its own precision.
  */
 export function formatMoney(minor: number | null): string {
-  if (minor === null) return "—";
-  return (minor / 100).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  return formatMinor(minor, 0);
 }

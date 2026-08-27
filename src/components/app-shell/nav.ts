@@ -39,7 +39,8 @@ export type NavIconName =
   | "onboarding"
   | "offboarding"
   | "performance"
-  | "security";
+  | "security"
+  | "payroll";
 
 export interface NavItem {
   label: string;
@@ -64,6 +65,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Overview", href: "/me", icon: "home", permissions: [] },
       { label: "My profile", href: "/me/profile", icon: "profile", permissions: [] },
+      { label: "My payslips", href: "/me/payslips", icon: "payroll", permissions: [] },
       { label: "Security", href: "/me/security", icon: "security", permissions: [] },
       {
         label: "My attendance",
@@ -218,6 +220,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/hr/tasks",
         icon: "tasks",
         permissions: ["performance.view_all"],
+      },
+      {
+        label: "Payroll",
+        href: "/hr/payroll",
+        icon: "payroll",
+        permissions: ["payroll.view_all"],
       },
       {
         label: "Reports",

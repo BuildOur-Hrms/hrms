@@ -673,6 +673,32 @@ async function main() {
   await withPlatform((db) => db.jobTask.createMany({ data: tasks }));
   console.log(`  tasks: ${tasks.length} across ${window.length} months`);
 
+  /*
+   * ── payroll: cleared rather than created.
+   *
+   * The payroll journey adds a salary component through the screens, which is
+   * the point of it. Leaving that row behind means the next run's create hits
+   * the unique code and the dialog refuses — a test that passes once and then
+   * fails forever, for a reason that has nothing to do with the code.
+   *
+   * Hard delete, not archive: a soft-deleted row still occupies the code as
+   * far as the service's duplicate check is concerned, which would leave the
+   * same problem with an extra step.
+   */
+  await withPlatform(async (db) => {
+    const codes = ["E2EBASIC"];
+    const components = await db.salaryComponent.findMany({
+      where: { companyId, code: { in: codes } },
+      select: { id: true },
+    });
+    if (components.length === 0) return;
+    const ids = components.map((component) => component.id);
+    await db.payslipItem.deleteMany({ where: { componentId: { in: ids } } });
+    await db.employeeSalaryItem.deleteMany({ where: { componentId: { in: ids } } });
+    await db.salaryComponent.deleteMany({ where: { id: { in: ids } } });
+    console.log(`  payroll: cleared ${ids.length} component(s) the journey creates`);
+  });
+
   console.log(`  company: ${E2E_SLUG}`);
   for (const [role, email] of Object.entries(E2E_USERS)) {
     console.log(`  ${role.padEnd(9)} ${email}`);
