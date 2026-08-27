@@ -1,8 +1,10 @@
 import type { RequestContext } from "@/lib/context";
-import { BusinessRuleError, NotFoundError } from "@/lib/errors";
+import { BusinessRuleError, ConflictError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
 import { PERMISSIONS, type PermissionCode } from "@/lib/permissions";
 import { inviteUser } from "@/modules/auth/service";
+
+import type { CreateRoleInput, SetPermissionsInput, UpdateRoleInput } from "./validators";
 
 /**
  * Roles, grants and user accounts (docs/08-api.md §3).
@@ -61,6 +63,186 @@ export function listPermissions() {
   return [...byModule.entries()]
     .map(([module, codes]) => ({ module, permissions: codes.sort() }))
     .sort((a, b) => a.module.localeCompare(b.module));
+}
+
+/**
+ * A permission the caller does not hold is a permission they cannot grant.
+ *
+ * This is the whole security of custom roles. `roles.manage` belongs to
+ * hr_admin, so without this an HR administrator could mint a role holding
+ * `platform.manage`, give it to themselves, and be a super administrator by
+ * lunchtime. The rule is the ordinary one: you may hand out what you have.
+ *
+ * Super administrators hold everything, so it never binds on them. It binds
+ * hard on any narrower role that is later given `roles.manage`, which is
+ * exactly when it matters.
+ */
+function assertMayGrant(ctx: RequestContext, codes: readonly string[]): void {
+  const beyond = codes.filter((code) => !ctx.permissions.has(code as PermissionCode));
+  if (beyond.length === 0) return;
+
+  throw new ForbiddenError(
+    `You cannot grant a permission you do not hold yourself: ${beyond.sort().join(", ")}.`,
+  );
+}
+
+/** System roles are the seeded four. They are the floor, and nothing edits them. */
+async function loadEditableRole(ctx: RequestContext, id: string) {
+  const role = await ctx.db.role.findFirst({
+    where: { id },
+    select: { id: true, name: true, isSystem: true },
+  });
+  if (!role) throw new NotFoundError("Role");
+
+  if (role.isSystem) {
+    throw new BusinessRuleError(
+      `${role.name} is a system role and cannot be changed. Make a role of your own instead.`,
+      { rule: "system_role" },
+    );
+  }
+  return role;
+}
+
+export async function createRole(ctx: RequestContext, input: CreateRoleInput) {
+  assertMayGrant(ctx, input.permissions);
+
+  const clash = await ctx.db.role.findFirst({
+    where: { name: input.name },
+    select: { id: true },
+  });
+  if (clash) throw new ConflictError(`A role called ${input.name} already exists.`);
+
+  const permissionIds = await permissionIdsFor(ctx, input.permissions);
+
+  const role = await ctx.db.role.create({
+    data: {
+      companyId: ctx.companyId,
+      name: input.name,
+      description: input.description ?? null,
+      isSystem: false,
+      rolePermissions: {
+        create: permissionIds.map((permissionId) => ({ permissionId })),
+      },
+    },
+    select: { id: true, name: true },
+  });
+
+  await emit(
+    "role.changed",
+    {
+      roleId: role.id,
+      name: role.name,
+      action: "created",
+      permissions: [...input.permissions].sort(),
+    },
+    actor(ctx),
+  );
+  return role;
+}
+
+export async function updateRole(ctx: RequestContext, id: string, input: UpdateRoleInput) {
+  const role = await loadEditableRole(ctx, id);
+
+  const updated = await ctx.db.role.update({
+    where: { id },
+    data: { description: input.description ?? null },
+    select: { id: true, name: true, description: true },
+  });
+
+  await emit("role.changed", { roleId: id, name: role.name, action: "updated" }, actor(ctx));
+  return updated;
+}
+
+/**
+ * Replace a role's permissions wholesale.
+ *
+ * A whole set rather than add/remove one at a time, because the screen shows
+ * the whole set and a half-applied change to who can see payroll is worse
+ * than a rejected one.
+ *
+ * Note what is *not* guarded: taking a permission away from a role you hold
+ * through that role. It is allowed, it takes effect on your next request, and
+ * it is recoverable by a super administrator. Guarding it would mean deciding
+ * which of somebody's roles counts, and getting that wrong locks people out
+ * of their own company more often than the mistake it prevents.
+ */
+export async function setRolePermissions(
+  ctx: RequestContext,
+  id: string,
+  input: SetPermissionsInput,
+) {
+  const role = await loadEditableRole(ctx, id);
+  assertMayGrant(ctx, input.permissions);
+
+  const permissionIds = await permissionIdsFor(ctx, input.permissions);
+
+  await ctx.db.rolePermission.deleteMany({ where: { roleId: id } });
+  if (permissionIds.length > 0) {
+    await ctx.db.rolePermission.createMany({
+      data: permissionIds.map((permissionId) => ({ roleId: id, permissionId })),
+    });
+  }
+
+  await emit(
+    "role.changed",
+    {
+      roleId: id,
+      name: role.name,
+      action: "permissions_set",
+      permissions: [...input.permissions].sort(),
+    },
+    actor(ctx),
+  );
+  return { id, permissions: [...input.permissions].sort() };
+}
+
+export async function deleteRole(ctx: RequestContext, id: string) {
+  const role = await loadEditableRole(ctx, id);
+
+  // Held by somebody is the one case worth refusing rather than cascading:
+  // deleting a role out from under its holders changes what those people can
+  // do, silently, and the person deleting it cannot see who they are.
+  const holders = await ctx.db.userRole.count({ where: { roleId: id } });
+  if (holders > 0) {
+    throw new BusinessRuleError(
+      `${role.name} is still held by ${holders} ${holders === 1 ? "person" : "people"}. Take it off them first.`,
+      { rule: "role_in_use" },
+    );
+  }
+
+  await ctx.db.rolePermission.deleteMany({ where: { roleId: id } });
+  await ctx.db.role.delete({ where: { id } });
+
+  await emit("role.changed", { roleId: id, name: role.name, action: "deleted" }, actor(ctx));
+  return { id };
+}
+
+/**
+ * Codes to ids, refusing anything the catalogue does not define.
+ *
+ * The zod schema already rejects unknown codes, so this failing means the
+ * `permissions` table and the code's catalogue have drifted — which is worth
+ * an error that says so rather than a role that silently holds less than it
+ * was given.
+ */
+async function permissionIdsFor(ctx: RequestContext, codes: readonly string[]): Promise<string[]> {
+  if (codes.length === 0) return [];
+
+  const rows = await ctx.db.permission.findMany({
+    where: { code: { in: [...codes] } },
+    select: { id: true, code: true },
+  });
+
+  if (rows.length !== new Set(codes).size) {
+    const found = new Set(rows.map((row) => row.code));
+    const missing = [...new Set(codes)].filter((code) => !found.has(code));
+    throw new BusinessRuleError(
+      `The permissions table does not have: ${missing.join(", ")}. Re-run the seed.`,
+      { rule: "permission_catalogue_drift" },
+    );
+  }
+
+  return rows.map((row) => row.id);
 }
 
 // ─────────────────────────────────────────────── users

@@ -45,6 +45,13 @@ export interface DomainEventMap {
   "user.enabled": { userId: string };
   "user.disabled": { userId: string };
   "user.roles_changed": { userId: string; roles: string[] };
+  /** A role itself, not somebody's grant of it. `permissions` only where it changed. */
+  "role.changed": {
+    roleId: string;
+    name: string;
+    action: "created" | "updated" | "permissions_set" | "deleted";
+    permissions?: string[];
+  };
   /// Only ever an account that was never used - see deleteUnusedAccount.
   "user.deleted": { userId: string };
   "user.linked_to_employee": { userId: string; employeeId: string };

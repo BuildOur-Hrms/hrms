@@ -699,6 +699,25 @@ async function main() {
     console.log(`  payroll: cleared ${ids.length} component(s) the journey creates`);
   });
 
+  /*
+   * ── roles: the journey creates one, and deletes it again.
+   *
+   * Cleared anyway, because a run that fails partway leaves the role behind
+   * and the next create then hits the unique name.
+   */
+  await withPlatform(async (db) => {
+    const roles = await db.role.findMany({
+      where: { companyId, isSystem: false, name: { in: ["e2erecruiter"] } },
+      select: { id: true },
+    });
+    if (roles.length === 0) return;
+    const ids = roles.map((role) => role.id);
+    await db.userRole.deleteMany({ where: { roleId: { in: ids } } });
+    await db.rolePermission.deleteMany({ where: { roleId: { in: ids } } });
+    await db.role.deleteMany({ where: { id: { in: ids } } });
+    console.log(`  roles: cleared ${ids.length} custom role(s) the journey creates`);
+  });
+
   console.log(`  company: ${E2E_SLUG}`);
   for (const [role, email] of Object.entries(E2E_USERS)) {
     console.log(`  ${role.padEnd(9)} ${email}`);

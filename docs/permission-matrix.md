@@ -176,6 +176,10 @@
 | `GET /api/v1/reports` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/reports/:slug` | _session_ | ✓ | ✓ | ✓ | ✓ |
 | `GET /api/v1/roles` | `roles.view_all` | ✓ | ✓ | · | · |
+| `POST /api/v1/roles` | `roles.manage` | ✓ | ✓ | · | · |
+| `DELETE /api/v1/roles/:id` | `roles.manage` | ✓ | ✓ | · | · |
+| `PATCH /api/v1/roles/:id` | `roles.manage` | ✓ | ✓ | · | · |
+| `PUT /api/v1/roles/:id/permissions` | `roles.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/settings` | `settings.manage` | ✓ | ✓ | · | · |
 | `PUT /api/v1/settings/:key` | `settings.manage` | ✓ | ✓ | · | · |
 | `GET /api/v1/shifts` | _session_ | ✓ | ✓ | ✓ | ✓ |
@@ -199,4 +203,4 @@
 | `POST /api/v1/users/:id/unlock` | `users.manage` | ✓ | ✓ | · | · |
 | `POST /api/v1/users/invite` | `users.manage` | ✓ | ✓ | · | · |
 
-**187 endpoints.** Permission-gated endpoints reachable per role — super_admin: 122 · hr_admin: 122 · manager: 34 · employee: 28.
+**191 endpoints.** Permission-gated endpoints reachable per role — super_admin: 126 · hr_admin: 126 · manager: 34 · employee: 28.

@@ -75,7 +75,7 @@ export default defineConfig({
        * back by the second project arriving.
        */
       testIgnore:
-        /(01-auth|09-profile-setup|10-link-account|11-onboarding|12-offboarding|13-performance|14-payroll)\.spec\.ts/,
+        /(01-auth|09-profile-setup|10-link-account|11-onboarding|12-offboarding|13-performance|14-payroll|15-roles)\.spec\.ts/,
     },
   ],
 

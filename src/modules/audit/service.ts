@@ -67,6 +67,17 @@ const AUDIT_MAP: {
   }),
   "user.enabled": (p) => ({ entityType: "user", entityId: p.userId }),
   "user.disabled": (p) => ({ entityType: "user", entityId: p.userId }),
+  "role.changed": (p) => ({
+    entityType: "role",
+    entityId: p.roleId,
+    // The permission set is the whole of what a role is, so it goes in the
+    // row: "who could see payroll last March" is answerable or it is not.
+    after: {
+      name: p.name,
+      action: p.action,
+      ...(p.permissions ? { permissions: p.permissions } : {}),
+    },
+  }),
   "user.roles_changed": (p) => ({
     entityType: "user",
     entityId: p.userId,
