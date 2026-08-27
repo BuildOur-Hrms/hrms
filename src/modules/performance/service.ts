@@ -1,4 +1,4 @@
-import type { RequestContext } from "@/lib/context";
+import { NOBODY, type RequestContext } from "@/lib/context";
 import { BusinessRuleError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
 import { resolveScope } from "@/lib/permissions";
@@ -226,7 +226,7 @@ export async function addGoal(ctx: RequestContext, cycleId: string, input: AddGo
 
   if (forSomebodyElse && scope === "team") {
     const report = await ctx.db.employee.findFirst({
-      where: { id: employeeId, managerId: ctx.employeeId ?? "" },
+      where: { id: employeeId, managerId: ctx.employeeId ?? NOBODY },
       select: { id: true },
     });
     if (!report) throw new NotFoundError("Employee");
@@ -356,7 +356,7 @@ async function loadReview(ctx: RequestContext, id: string) {
 
 export async function listReviews(ctx: RequestContext, input: ListReviewsInput) {
   const scope = resolveScope(ctx, "performance");
-  const me = ctx.employeeId ?? "";
+  const me = ctx.employeeId ?? NOBODY;
 
   const where: Record<string, unknown> = {
     ...(input.cycleId ? { cycleId: input.cycleId } : {}),

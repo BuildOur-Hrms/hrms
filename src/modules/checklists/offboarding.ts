@@ -1,4 +1,4 @@
-import type { RequestContext } from "@/lib/context";
+import { NOBODY, type RequestContext } from "@/lib/context";
 import { BusinessRuleError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
 import { resolveScope } from "@/lib/permissions";
@@ -460,7 +460,7 @@ export async function cancelExit(ctx: RequestContext, id: string, input: CancelE
 
 export async function listExits(ctx: RequestContext, input: ListExitsInput) {
   const scope = resolveScope(ctx, "offboarding");
-  const me = ctx.employeeId ?? "";
+  const me = ctx.employeeId ?? NOBODY;
 
   const where: Record<string, unknown> = input.status ? { status: input.status } : {};
 

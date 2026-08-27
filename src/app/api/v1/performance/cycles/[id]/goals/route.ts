@@ -1,3 +1,4 @@
+import { NOBODY } from "@/lib/context";
 import { withApi } from "@/lib/api";
 import { addGoal, goalsFor } from "@/modules/performance/service";
 import { addGoalSchema, idParamSchema, type AddGoalInput } from "@/modules/performance/validators";
@@ -14,7 +15,7 @@ type Query = z.infer<typeof querySchema>;
 export const GET = withApi<Record<string, never>, Query, Params>(
   { permission: "performance.view_own", params: idParamSchema, query: querySchema },
   async ({ ctx, params, query }) =>
-    goalsFor(ctx, params.id, query.employeeId ?? ctx.employeeId ?? ""),
+    goalsFor(ctx, params.id, query.employeeId ?? ctx.employeeId ?? NOBODY),
 );
 
 /**

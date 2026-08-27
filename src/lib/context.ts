@@ -12,6 +12,17 @@ import type { SessionClaims } from "./session";
  * of their own — that is the single choke point that makes tenant isolation
  * true by construction instead of by discipline.
  */
+/**
+ * Stands in for "this account has no employee record".
+ *
+ * It has to be a well-formed uuid. These values go into filters against
+ * `employee_id`, and Postgres does not compare an empty string to a uuid
+ * column — it raises, which turns "you own nothing" into a 500 for exactly
+ * the accounts that own nothing: administrators with no employee record.
+ * The zero uuid matches no row, which is the answer that was wanted.
+ */
+export const NOBODY = "00000000-0000-0000-0000-000000000000";
+
 export interface RequestContext {
   userId: string;
   companyId: string;

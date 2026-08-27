@@ -1,4 +1,4 @@
-import type { RequestContext } from "@/lib/context";
+import { NOBODY, type RequestContext } from "@/lib/context";
 import { ConflictError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
 
@@ -21,9 +21,6 @@ import type { BoardInput, CreateTaskInput, ListTasksInput, UpdateTaskInput } fro
  * belong to whoever set it, because a target you can re-weight is not a
  * target.
  */
-
-/** A person who is not on anybody's team, for scopes that resolve to nobody. */
-const NOBODY = "00000000-0000-0000-0000-000000000000";
 
 function actor(ctx: RequestContext): EventActor {
   return {

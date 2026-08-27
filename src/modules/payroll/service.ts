@@ -1,4 +1,4 @@
-import type { RequestContext } from "@/lib/context";
+import { NOBODY, type RequestContext } from "@/lib/context";
 import { csvCell } from "@/lib/csv";
 import { BusinessRuleError, ConflictError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
@@ -590,7 +590,7 @@ export async function markRunPaid(ctx: RequestContext, id: string, input: RunSta
  */
 export async function listPayslips(ctx: RequestContext, input: ListPayslipsInput) {
   const canSeeAll = resolveScope(ctx, "payroll") === "all";
-  const me = ctx.employeeId ?? "";
+  const me = ctx.employeeId ?? NOBODY;
 
   const where: Record<string, unknown> = {
     ...(input.runId ? { runId: input.runId } : {}),

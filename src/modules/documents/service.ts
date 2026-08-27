@@ -1,4 +1,4 @@
-import type { RequestContext } from "@/lib/context";
+import { NOBODY, type RequestContext } from "@/lib/context";
 import { list } from "@/lib/api";
 import { BusinessRuleError, ConflictError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
@@ -48,16 +48,6 @@ function actor(ctx: RequestContext): EventActor {
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
-
-/**
- * Stands in for "this account has no employee record".
- *
- * It has to be a well-formed uuid: these values go into filters against
- * `employee_id`, and Postgres does not compare an empty string to a uuid
- * column — it raises, which turns "you own nothing" into a 500. The zero uuid
- * matches no row, which is the answer that was wanted.
- */
-const NOBODY = "00000000-0000-0000-0000-000000000000";
 
 function viewerOf(ctx: RequestContext): Viewer {
   return {

@@ -1,4 +1,4 @@
-import type { RequestContext } from "@/lib/context";
+import { NOBODY, type RequestContext } from "@/lib/context";
 import { ForbiddenError } from "@/lib/errors";
 import { requirePermission, resolveScope } from "@/lib/permissions";
 
@@ -14,9 +14,6 @@ import type { ReportQueryInput, ReportScope } from "./validators";
  * as numbers), because the screen renders columns from the catalog and has no
  * knowledge of any particular report.
  */
-
-/** A user id that matches nothing, for scopes that resolve to nobody. */
-const NOBODY = "00000000-0000-0000-0000-000000000000";
 
 export type ReportRow = Record<string, string | number | boolean | null>;
 

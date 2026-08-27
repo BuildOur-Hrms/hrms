@@ -1,4 +1,4 @@
-import type { RequestContext } from "@/lib/context";
+import { NOBODY, type RequestContext } from "@/lib/context";
 import { BusinessRuleError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
 import { resolveScope } from "@/lib/permissions";
@@ -386,7 +386,7 @@ export async function checklistFor(
  */
 export async function listTasks(ctx: RequestContext, input: ListTasksInput) {
   const scope = resolveScope(ctx, "onboarding");
-  const me = ctx.employeeId ?? "";
+  const me = ctx.employeeId ?? NOBODY;
 
   const where: Record<string, unknown> = {
     ...(input.kind ? { kind: input.kind } : {}),

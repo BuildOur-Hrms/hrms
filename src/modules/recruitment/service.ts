@@ -1,4 +1,4 @@
-import type { RequestContext } from "@/lib/context";
+import { NOBODY, type RequestContext } from "@/lib/context";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { emit, type EventActor } from "@/lib/events";
 import { fromDateOnly } from "@/lib/utils";
@@ -30,23 +30,6 @@ import type {
   UpdateCandidateInput,
   UpdateJobInput,
 } from "./validators";
-
-/**
- * Recruitment: postings, candidates, applications, interviews, offers, and
- * the conversion that ends the pipeline.
- *
- * Two rules run through the whole module.
- *
- * **Salary bands and offer amounts are internal.** They live on rows that only
- * `recruitment.view_all` reaches. An interviewer sees the person and the
- * round they are sitting on, never the money.
- *
- * **An offer cannot be sent by the person who wrote it alone.** Sending
- * requires `recruitment.approve`, and the approver is recorded on the row —
- * the database refuses an offer past draft that cannot say who signed it.
- */
-
-const NOBODY = "00000000-0000-0000-0000-000000000000";
 
 function actor(ctx: RequestContext): EventActor {
   return {
