@@ -17,8 +17,17 @@ import { call, callRaw, seedTenants, type Tenants } from "./harness";
 
 const PATH = "/api/v1/auth/change-password";
 
+/*
+ * Passphrases this suite sets and then uses. Long and unguessable on purpose,
+ * because the policy refuses anything that is not — which makes them look
+ * exactly like a leaked credential to a secret scanner, hence the annotation.
+ */
+const FIRST = "Original-Harbour-Lantern-12"; // gitleaks:allow
+const SECOND = "Marmalade-Cassette-41"; // gitleaks:allow
+const THIRD = "Ferrous-Windmill-7788"; // gitleaks:allow
+
 let t: Tenants;
-let currentPassword = "Original-Harbour-Lantern-12";
+let currentPassword = FIRST;
 /** Re-issued by a successful change; the seeded one dies with the old version. */
 let freshCookie = "";
 
@@ -69,7 +78,7 @@ describe("changing your own password", () => {
   });
 
   it("changes it, and hands back a session that still works", async () => {
-    const next = "Marmalade-Cassette-41";
+    const next = SECOND;
 
     const response = await callRaw(changePassword, PATH, {
       as: t.acme.employee,
@@ -115,10 +124,10 @@ describe("changing your own password", () => {
     const result = await call(changePassword, PATH, {
       as: { ...t.acme.employee, cookie: freshCookie },
       method: "POST",
-      body: { currentPassword, newPassword: "Ferrous-Windmill-7788" },
+      body: { currentPassword, newPassword: THIRD },
     });
     expect(result.status, result.error?.message).toBe(200);
-    currentPassword = "Ferrous-Windmill-7788";
+    currentPassword = THIRD;
 
     const onTheOldSession = await call(changePassword, PATH, {
       as: { ...t.acme.employee, cookie: staleCookie },
