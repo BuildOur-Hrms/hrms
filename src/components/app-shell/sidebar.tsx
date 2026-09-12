@@ -109,6 +109,8 @@ function NavGroup({
 }) {
   const panelId = `nav-group-${section.label.toLowerCase().replace(/\s+/g, "-")}`;
 
+  const Icon = section.icon ? NAV_ICONS[section.icon] : null;
+
   return (
     <div>
       <button
@@ -117,12 +119,31 @@ function NavGroup({
         aria-expanded={open}
         aria-controls={panelId}
         className={cn(
-          "hover:bg-sidebar-accent/50 flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-[0.6875rem] font-semibold tracking-wider uppercase transition-colors",
+          "group/group hover:bg-sidebar-accent/50 flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-[0.6875rem] font-semibold tracking-wider uppercase transition-colors",
           holdsCurrentPage && !open ? "text-foreground" : "text-muted-foreground",
           "hover:text-foreground",
         )}
       >
-        <span className="truncate">{section.label}</span>
+        {/*
+         * The glyph is `size-4` with the same `gap-2.5` the links below use, so
+         * a header's text starts on the same vertical line as its items' text.
+         * Sizing it down to match the smaller type would have bought a tidier
+         * header at the cost of the column the whole sidebar reads along.
+         */}
+        <span className="flex min-w-0 items-center gap-2.5">
+          {Icon ? (
+            <Icon
+              className={cn(
+                "size-4 shrink-0 transition-transform duration-200 ease-[var(--ease-settle)] group-hover/group:scale-110",
+                // Tinted whether the group is open or shut. Shut is when it
+                // earns its keep — it is the only thing left saying which of
+                // four collapsed drawers the current page is inside.
+                holdsCurrentPage ? "text-brand" : "text-muted-foreground",
+              )}
+            />
+          ) : null}
+          <span className="truncate">{section.label}</span>
+        </span>
         <ChevronDown
           aria-hidden
           className={cn(

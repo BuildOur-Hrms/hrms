@@ -16,11 +16,14 @@ import {
   MapPin,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   KeyRound,
   Target,
   UserCircle,
   UserCog,
+  UserRound,
   Users,
+  UsersRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -40,6 +43,16 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   home: House,
   profile: UserCircle,
   team: Users,
+  /*
+   * The three below are the section headers' own glyphs, deliberately a step
+   * away from the item icons they sit above: `UserRound` beside the group
+   * whose items use `UserCircle`, `UsersRound` beside the one that uses
+   * `Users`. A header repeating an icon verbatim reads as a duplicated row
+   * rather than a heading.
+   */
+  person: UserRound,
+  people: UsersRound,
+  controls: SlidersHorizontal,
   employees: Users,
   departments: ClipboardList,
   shifts: Clock,

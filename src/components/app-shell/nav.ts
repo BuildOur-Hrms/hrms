@@ -21,6 +21,9 @@ export type NavIconName =
   | "home"
   | "profile"
   | "team"
+  | "person"
+  | "people"
+  | "controls"
   | "employees"
   | "departments"
   | "shifts"
@@ -52,6 +55,15 @@ export interface NavItem {
 
 export interface NavSection {
   label: string;
+  /**
+   * The glyph on the group header.
+   *
+   * Optional because the unlabelled group has no header to put one on. Every
+   * group that *does* have a header carries one: a collapsed sidebar is a
+   * column of four words, and a word alone is slower to find than a word with
+   * a shape beside it.
+   */
+  icon?: NavIconName;
   items: NavItem[];
 }
 
@@ -62,6 +74,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "My space",
+    icon: "person",
     items: [
       { label: "Overview", href: "/me", icon: "home", permissions: [] },
       { label: "My profile", href: "/me/profile", icon: "profile", permissions: [] },
@@ -107,6 +120,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "Team",
+    icon: "people",
     items: [
       {
         label: "My team",
@@ -148,6 +162,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "People",
+    icon: "company",
     items: [
       {
         label: "HR overview",
@@ -237,6 +252,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "Administration",
+    icon: "controls",
     items: [
       {
         label: "Overview",
