@@ -70,7 +70,7 @@ export function NotificationBell() {
       >
         <Bell className="size-4" />
         {unread > 0 ? (
-          <span className="bg-brand text-brand-foreground absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full text-[0.6rem] font-semibold tabular-nums">
+          <span className="bg-brand text-brand-foreground absolute -top-0.5 -right-0.5 flex size-4 animate-[badge-pop_220ms_var(--ease-settle)] items-center justify-center rounded-full text-[0.6rem] font-semibold tabular-nums">
             {unread > 9 ? "9+" : unread}
           </span>
         ) : null}
