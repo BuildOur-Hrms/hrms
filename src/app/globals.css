@@ -382,6 +382,18 @@
   }
 }
 
+/* The sidebar's you-are-here edge, growing from its own centre. */
+@keyframes sidebar-marker {
+  from {
+    opacity: 0;
+    transform: scaleY(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /*
  * The opt-out, applied to everything rather than to our own utilities.
  *

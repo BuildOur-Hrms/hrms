@@ -53,7 +53,7 @@ export default async function DashboardPage() {
       <PageHeader title={greeting} description={session.company.name} />
 
       {stats ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="motion-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label={stats.scope === "company" ? "Headcount" : "Team size"}
             value={stats.total}
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      <div className="motion-stagger mt-6 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Your profile</CardTitle>

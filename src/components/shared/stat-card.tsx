@@ -14,7 +14,7 @@ export function StatCard({
   icon?: LucideIcon;
 }) {
   return (
-    <Card>
+    <Card className="motion-lift group/stat">
       <CardContent className="flex items-start justify-between gap-3 p-5">
         <div className="min-w-0">
           <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
@@ -24,7 +24,7 @@ export function StatCard({
           {hint ? <p className="text-muted-foreground mt-1 truncate text-xs">{hint}</p> : null}
         </div>
         {Icon ? (
-          <div className="bg-brand-soft text-brand-soft-foreground flex size-9 shrink-0 items-center justify-center rounded-lg">
+          <div className="bg-brand-soft text-brand-soft-foreground ease-settle flex size-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover/stat:scale-105">
             <Icon className="size-4" />
           </div>
         ) : null}

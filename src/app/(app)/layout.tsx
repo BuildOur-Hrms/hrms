@@ -1,4 +1,5 @@
 import { visibleSections } from "@/components/app-shell/nav";
+import { PageTransition } from "@/components/app-shell/page-transition";
 import { SidebarNav } from "@/components/app-shell/sidebar";
 import { Topbar } from "@/components/app-shell/topbar";
 import { requireSession } from "@/lib/page";
@@ -30,7 +31,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           roles={session.roles}
         />
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-6xl">{children}</div>
+          <div className="mx-auto w-full max-w-6xl">
+            <PageTransition>{children}</PageTransition>
+          </div>
         </main>
       </div>
     </div>

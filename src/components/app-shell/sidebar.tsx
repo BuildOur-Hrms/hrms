@@ -175,13 +175,34 @@ function NavLink({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+        "group/link relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
         active
           ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
           : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground",
       )}
     >
-      <Icon className={cn("size-4 shrink-0", active ? "text-brand" : "text-muted-foreground")} />
+      {/*
+       * The marker for where you are.
+       *
+       * The tinted pill alone had to carry that on its own, and against a
+       * sidebar this long the eye reads a block of colour as a section rather
+       * than a position. A hard brand edge is unambiguous at a glance.
+       *
+       * It grows from its own centre on arrival — `motion-rise` would slide it
+       * down past the pill it belongs to.
+       */}
+      {active ? (
+        <span
+          aria-hidden
+          className="bg-brand absolute inset-y-1.5 left-0 w-[3px] origin-center animate-[sidebar-marker_240ms_var(--ease-settle)] rounded-full"
+        />
+      ) : null}
+      <Icon
+        className={cn(
+          "size-4 shrink-0 transition-transform duration-200 ease-[var(--ease-settle)] group-hover/link:scale-110",
+          active ? "text-brand" : "text-muted-foreground",
+        )}
+      />
       {item.label}
     </Link>
   );

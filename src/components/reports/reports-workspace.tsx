@@ -132,9 +132,9 @@ function ReportCatalog({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="motion-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {reports.map((report) => (
-        <Card key={report.slug} className="hover:border-brand/40 transition-colors">
+        <Card key={report.slug} className="motion-lift">
           <CardContent className="flex h-full flex-col items-start gap-3 p-5">
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="font-mono text-[11px] font-normal">

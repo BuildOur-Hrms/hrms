@@ -45,7 +45,7 @@ export function PanelTile({
       {Icon ? (
         <div
           className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-lg",
+            "ease-settle flex size-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover/tile:scale-105",
             tone === "attention" && Number(value) > 0
               ? "bg-brand-soft text-brand-soft-foreground"
               : "bg-muted text-muted-foreground",
@@ -60,7 +60,7 @@ export function PanelTile({
   if (!href) return <Card>{body}</Card>;
 
   return (
-    <Card className="hover:border-brand/30 transition-colors">
+    <Card className="motion-lift group/tile">
       <Link href={href} className="block">
         {body}
       </Link>

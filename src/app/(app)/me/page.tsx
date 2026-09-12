@@ -104,7 +104,7 @@ export default async function MySpacePage() {
       */}
       <MyChecklistCard today={new Date().toISOString().slice(0, 10)} />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="motion-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <PanelTile
           label="Today"
           value={data.today ? (STATUS_LABEL[data.today.status] ?? data.today.status) : "—"}
@@ -143,7 +143,7 @@ export default async function MySpacePage() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="motion-stagger mt-4 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Leave balances</CardTitle>

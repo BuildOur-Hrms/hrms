@@ -33,7 +33,7 @@ export default async function HrHomePage() {
         description={`${session.company.name} — today at a glance, and what needs a decision.`}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="motion-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <PanelTile
           label="Headcount"
           value={data.headcount}
@@ -66,7 +66,7 @@ export default async function HrHomePage() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="motion-stagger mt-4 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Today</CardTitle>

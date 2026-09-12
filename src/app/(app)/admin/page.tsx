@@ -47,7 +47,7 @@ export default async function AdminHomePage() {
         description={`${session.company.name} — access, configuration and the audit trail.`}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="motion-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <PanelTile
           label="Active users"
           value={data.users.active}
@@ -78,7 +78,7 @@ export default async function AdminHomePage() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="motion-stagger mt-4 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Setup</CardTitle>
