@@ -66,6 +66,14 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /*
+   * One easing curve for the whole app, decelerating hard and never
+   * overshooting: movement arrives settled rather than stopping dead, and a
+   * single curve is what makes twenty separate animations read as one product
+   * rather than twenty. Exposed as a theme token, so `ease-settle` is a
+   * Tailwind utility as well as a variable.
+   */
+  --ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
   /* Shadows are warm and barely there — depth without visual noise. */
   --shadow-xs: 0 1px 2px 0 oklch(0.47 0.03 60 / 0.05);
   --shadow-sm: 0 1px 2px 0 oklch(0.47 0.03 60 / 0.05), 0 1px 3px 0 oklch(0.47 0.03 60 / 0.05);
@@ -237,5 +245,162 @@
   .scrollbar-warm {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
+  }
+
+  /*
+   * Motion.
+   *
+   * The rules this vocabulary is built on, because an HR tool is somewhere
+   * people spend a whole working day rather than somewhere they land once:
+   *
+   *   Short. Nothing here runs past 320ms. Motion that reads as "smooth" the
+   *   first time reads as "slow" the four hundredth.
+   *
+   *   Small. Six pixels of travel is enough to say "this is new". Anything
+   *   further starts to feel like the page is arriving rather than the data.
+   *
+   *   Decelerating. Everything eases out, so movement arrives settled instead
+   *   of stopping dead. Nothing overshoots — a bounce is charming on a
+   *   marketing page and undignified on a payslip.
+   *
+   *   Never idle. The only looping animation is the loading shimmer, which
+   *   stops the moment the data lands. Movement in the corner of the eye is a
+   *   tax on anyone trying to read.
+   */
+  .motion-rise {
+    animation: motion-rise 280ms var(--ease-settle) both;
+  }
+
+  /*
+   * A grid or list whose children arrive in sequence.
+   *
+   * The delay is carried by `nth-child` rather than an inline custom property
+   * so that server components can use it without becoming client components
+   * to hand each child its index. It runs out at twelve: past that the last
+   * card would wait two-thirds of a second for no reason anyone could name,
+   * so everything from the thirteenth on arrives with the twelfth.
+   */
+  .motion-stagger > * {
+    animation: motion-rise 300ms var(--ease-settle) both;
+  }
+  .motion-stagger > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  .motion-stagger > *:nth-child(2) {
+    animation-delay: 45ms;
+  }
+  .motion-stagger > *:nth-child(3) {
+    animation-delay: 90ms;
+  }
+  .motion-stagger > *:nth-child(4) {
+    animation-delay: 135ms;
+  }
+  .motion-stagger > *:nth-child(5) {
+    animation-delay: 180ms;
+  }
+  .motion-stagger > *:nth-child(6) {
+    animation-delay: 225ms;
+  }
+  .motion-stagger > *:nth-child(7) {
+    animation-delay: 270ms;
+  }
+  .motion-stagger > *:nth-child(8) {
+    animation-delay: 315ms;
+  }
+  .motion-stagger > *:nth-child(9) {
+    animation-delay: 360ms;
+  }
+  .motion-stagger > *:nth-child(10) {
+    animation-delay: 405ms;
+  }
+  .motion-stagger > *:nth-child(11) {
+    animation-delay: 450ms;
+  }
+  .motion-stagger > *:nth-child(n + 12) {
+    animation-delay: 495ms;
+  }
+
+  /*
+   * Cards that answer the pointer.
+   *
+   * The lift is two pixels and the border warms a quarter of the way to the
+   * brand — enough to say "this is one thing, and you are on it" across a
+   * grid of them, without the row beneath appearing to sink.
+   */
+  .motion-lift {
+    transition:
+      transform 200ms var(--ease-settle),
+      box-shadow 200ms var(--ease-settle),
+      border-color 200ms var(--ease-settle);
+  }
+  .motion-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: color-mix(in oklch, var(--border), var(--brand) 28%);
+  }
+
+  /*
+   * The loading sheen.
+   *
+   * A sweep rather than a pulse: a pulse fades the placeholder towards the
+   * page and reads, for a moment, as content that failed to load, where a
+   * sweep only ever reads as work in progress.
+   */
+  .motion-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .motion-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    translate: -100% 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--foreground) 7%, transparent),
+      transparent
+    );
+    animation: motion-shimmer 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes motion-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-shimmer {
+  to {
+    translate: 100% 0;
+  }
+}
+
+/*
+ * The opt-out, applied to everything rather than to our own utilities.
+ *
+ * Someone who has asked their operating system for less motion has asked the
+ * whole page, not the parts we remembered to think about — so this reaches
+ * component library transitions and anything added later, which a per-utility
+ * guard never would. Durations collapse to a hair above zero rather than to
+ * zero so that `animationend` listeners still fire, and `both` leaves every
+ * element at its finished state: visible, in place, nothing stranded
+ * mid-fade.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
